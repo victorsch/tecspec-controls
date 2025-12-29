@@ -456,17 +456,30 @@ Or set up a remote update mechanism via SSH.
 
 This approach creates a custom Linux image with ONLY what your app needs. Final image is ~100-150MB.
 
-## Prerequisites (On Your Development Machine)
+## Prerequisites (On Your Arch Linux Development Machine)
 
-You'll build the image on your Linux PC, not on the Pi.
+You'll build the image on your Arch PC, not on the Pi.
 
 ```bash
-# Install dependencies (Ubuntu/Debian)
-sudo apt install -y \
-    sed make binutils build-essential gcc g++ \
-    patch gzip bzip2 perl tar cpio python3 unzip rsync \
-    file bc wget libncurses5-dev git
+# Install dependencies (Arch Linux)
+sudo pacman -S --needed \
+    base-devel \
+    ncurses \
+    bc \
+    rsync \
+    unzip \
+    wget \
+    cpio \
+    python \
+    git
 ```
+
+**Note:** Arch already includes most tools needed (sed, make, binutils, gcc, g++, patch, gzip, bzip2, perl, tar, file) in the `base-devel` group.
+
+**Arch-specific considerations:**
+- Buildroot works perfectly on Arch but occasionally newer toolchain versions can cause issues
+- If you encounter build errors, check Buildroot's known issues or use their pre-built toolchain option
+- The AUR package `buildroot` exists but building from source (below) is recommended for embedded work
 
 ## Step 1: Get Buildroot
 
@@ -475,6 +488,16 @@ cd ~
 wget https://buildroot.org/downloads/buildroot-2024.02.tar.gz
 tar xf buildroot-2024.02.tar.gz
 cd buildroot-2024.02
+```
+
+**Arch note:** If you encounter locale-related build errors, ensure your locale is set:
+```bash
+# Check current locale
+locale
+
+# If needed, uncomment en_US.UTF-8 in /etc/locale.gen and run:
+sudo locale-gen
+export LC_ALL=en_US.UTF-8
 ```
 
 ## Step 2: Configure for Raspberry Pi 4
@@ -628,7 +651,7 @@ $(eval $(generic-package))
 # Create buildroot external tree
 mkdir -p ~/buildroot-external/package/heatex
 
-# Copy your source
+# Copy your source (use your actual path)
 cp -r /home/victor/source/repos/tecspec-controls ~/buildroot-external/heatex-src
 
 # Create BR2_EXTERNAL structure
@@ -699,6 +722,11 @@ lsblk
 sudo dd if=output/images/sdcard.img of=/dev/sdX bs=4M status=progress
 sync
 ```
+
+**Arch tips:**
+- You can also use `balenaEtcher` from the AUR for a GUI approach: `yay -S balena-etcher`
+- Ensure you're in the `disk` or `storage` group to access block devices: `sudo usermod -aG disk $USER` (requires logout/login)
+- For safer flashing, unmount all partitions first: `sudo umount /dev/sdX*`
 
 ## Step 7: Boot Your Pi
 
