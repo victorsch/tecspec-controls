@@ -480,6 +480,7 @@ sudo pacman -S --needed \
 - Buildroot works perfectly on Arch but occasionally newer toolchain versions can cause issues
 - If you encounter build errors, check Buildroot's known issues or use their pre-built toolchain option
 - The AUR package `buildroot` exists but building from source (below) is recommended for embedded work
+- **IMPORTANT:** On Arch Linux, `make menuconfig` has ncurses compatibility issues. Use `make nconfig` instead throughout this guide.
 
 ## Step 1: Get Buildroot
 
@@ -506,11 +507,19 @@ export LC_ALL=en_US.UTF-8
 # Start with Raspberry Pi 4 (64-bit) base config
 make raspberrypi4_64_defconfig
 
-# Open configuration menu
-make menuconfig
+# Open configuration menu (use nconfig on Arch Linux)
+make nconfig
 ```
 
-### In menuconfig, configure the following:
+**nconfig Navigation:**
+- Arrow keys: Navigate menu
+- Enter: Select/Enter submenu
+- Space: Toggle option
+- F6: Save configuration
+- F9: Exit
+- F1: Help
+
+### In nconfig, configure the following:
 
 **Target options:**
 - Target Architecture: AArch64 (little endian)
@@ -696,12 +705,16 @@ WantedBy=multi-user.target
 ```bash
 cd ~/buildroot-2024.02
 export BR2_EXTERNAL=~/buildroot-external
-make menuconfig
+make nconfig
 ```
 
 Navigate to: `External options` → Enable `heatex`
 
-Save and exit.
+You should also verify/enable the following dependencies:
+- **Target packages → Graphic libraries → Qt6 Charts** (enable this)
+- **Target packages → Libraries → Other → libqrencode** (enable this)
+
+Save (F6) and exit (F9).
 
 ## Step 5: Build
 
