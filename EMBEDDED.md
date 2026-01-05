@@ -120,8 +120,9 @@ sudo mkdir -p /opt/heatex
 # Copy executable
 sudo cp ~/heatex/build/bin/heatex /opt/heatex/
 
-# Copy any required assets (if you have config files, images, etc.)
-# sudo cp -r ~/heatex/assets /opt/heatex/
+# Copy required assets to /opt/
+sudo cp ~/heatex/heatex.png /opt/
+sudo cp ~/heatex/alfa.svg /opt/
 
 # Make executable
 sudo chmod +x /opt/heatex/heatex
@@ -172,12 +173,16 @@ Wants=graphical.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
+User=root
+Group=root
 Environment="QT_QPA_PLATFORM=linuxfb"
+Environment="QT_QPA_EGLFS_ALWAYS_SET_MODE=1"
+Environment="QT_QPA_EGLFS_KMS_CONFIG=/etc/heatex-kms.json"
+Environment="QT_QPA_EGLFS_HIDECURSOR=1"
 Environment="QT_LOGGING_RULES=*.debug=false"
+Environment="QT_QPA_FB_TTY=/dev/tty7"
 WorkingDirectory=/opt/heatex
-ExecStartPre=/bin/sleep 2
+ExecStartPre=/bin/sleep 1
 ExecStart=/opt/heatex/heatex
 Restart=always
 RestartSec=3
@@ -217,6 +222,9 @@ To find your display's connector name, run: `sudo modetest -M vc4 -c`
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable heatex.service
+
+# Set system to use graphical.target (required even on Lite)
+sudo systemctl set-default graphical.target
 ```
 
 ## Step 7: Configure Boot for Kiosk Mode
@@ -289,11 +297,11 @@ Before=heatex.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/fbi -T 1 -d /dev/fb0 --noverbose -a /opt/heatex/splash/splash.png
-ExecStartPost=/bin/sleep 3
-RemainAfterExit=yes
-StandardOutput=null
-StandardError=null
+ExecStartPre=/bin/sleep 2
+ExecStartPre=/usr/bin/chvt 7
+ExecStart=/usr/bin/fbi -T 7 -d /dev/fb0 --noverbose -a -t 5 /opt/heatex/splash/tecspec.png
+ExecStartPost=/bin/sleep 5
+ExecStartPost=/usr/bin/killall fbi
 
 [Install]
 WantedBy=graphical.target
@@ -304,11 +312,10 @@ Enable it:
 sudo systemctl enable splash-screen.service
 ```
 
-**Note:** You'll need to create a PNG version of your splash. Convert your SVG:
+**Note:** Copy your splash screen image:
 ```bash
-sudo apt install -y librsvg2-bin
-rsvg-convert -w 1920 -h 1080 ~/heatex/alfa.svg -o ~/heatex/splash.png
-sudo cp ~/heatex/splash.png /opt/heatex/splash/
+sudo mkdir -p /opt/heatex/splash
+sudo cp ~/heatex/tecspec.png /opt/heatex/splash/
 ```
 
 ## Step 9: Optimize Boot Time (Optional)
