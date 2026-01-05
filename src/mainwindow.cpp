@@ -207,7 +207,7 @@ void MainWindow::setupUI() {
     // Heat exchanger image
     QLabel* imageLabel = new QLabel();
     QPixmap pixmap("../heatex.png");
-    imageLabel->setPixmap(pixmap.scaled(300, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    imageLabel->setPixmap(pixmap.scaled(600, 400, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     imageLabel->setAlignment(Qt::AlignCenter);
 
     // Sensor grid
