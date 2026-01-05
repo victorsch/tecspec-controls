@@ -174,9 +174,7 @@ Wants=graphical.target
 Type=simple
 User=pi
 Group=pi
-Environment="QT_QPA_PLATFORM=eglfs"
-Environment="QT_QPA_EGLFS_ALWAYS_SET_MODE=1"
-Environment="QT_QPA_EGLFS_KMS_CONFIG=/etc/heatex-kms.json"
+Environment="QT_QPA_PLATFORM=linuxfb"
 Environment="QT_LOGGING_RULES=*.debug=false"
 WorkingDirectory=/opt/heatex
 ExecStartPre=/bin/sleep 2
@@ -190,7 +188,9 @@ StandardError=journal
 WantedBy=graphical.target
 ```
 
-### 6.2 Create Qt EGLFS Configuration
+### 6.2 Create Qt EGLFS Configuration (Optional - only needed for EGLFS)
+
+**Note:** This file is only needed if using `QT_QPA_PLATFORM=eglfs`. Since we're using linuxfb by default, you can skip this step unless your display supports KMS/DRM.
 
 Create `/etc/heatex-kms.json`:
 
@@ -199,14 +199,18 @@ Create `/etc/heatex-kms.json`:
   "device": "/dev/dri/card0",
   "outputs": [
     {
-      "name": "HDMI1",
-      "mode": "1920x1080"
+      "name": "DSI-1",
+      "mode": "1280x800"
     }
   ]
 }
 ```
 
-Adjust the resolution to match your display.
+Adjust the connector name and resolution to match your display:
+- For HDMI displays: `"name": "HDMI-A-1"`, `"mode": "1920x1080"`
+- For DSI displays: `"name": "DSI-1"`, `"mode": "1280x800"`
+
+To find your display's connector name, run: `sudo modetest -M vc4 -c`
 
 ### 6.3 Enable the Service
 
@@ -356,10 +360,7 @@ ExecStart=/opt/heatex/heatex
 ...
 ```
 
-Or add to the service environment:
-```ini
-Environment="QT_QPA_EGLFS_HIDECURSOR=1"
-```
+**Note:** The `QT_QPA_EGLFS_HIDECURSOR` environment variable only works with EGLFS, not linuxfb. Use unclutter for cursor hiding with linuxfb.
 
 ### 10.2 Disable Screen Blanking
 
@@ -407,9 +408,14 @@ sudo journalctl -u heatex.service -n 50
 ### Display Issues
 
 Try different Qt platforms:
-- `QT_QPA_PLATFORM=eglfs` - Modern KMS/DRM (recommended)
-- `QT_QPA_PLATFORM=linuxfb` - Legacy framebuffer
+- `QT_QPA_PLATFORM=linuxfb` - Legacy framebuffer (recommended for most displays)
+- `QT_QPA_PLATFORM=eglfs` - Modern KMS/DRM (for displays with DRM support)
 - `QT_QPA_PLATFORM=wayland` - Wayland compositor (requires more setup)
+
+**Common errors:**
+- `qt.qpa.xcb: could not connect to display` - Set `QT_QPA_PLATFORM=linuxfb`
+- `drmModeGetResources failed` - Use linuxfb instead of eglfs
+- `no screens available` - Use linuxfb or check display driver configuration
 
 ### Performance Issues
 
@@ -486,9 +492,9 @@ sudo pacman -S --needed \
 
 ```bash
 cd ~
-wget https://buildroot.org/downloads/buildroot-2024.02.tar.gz
-tar xf buildroot-2024.02.tar.gz
-cd buildroot-2024.02
+wget https://buildroot.org/downloads/buildroot-2025.08.3.tar.gz
+tar xf buildroot-2025.08.3.tar.gz
+cd buildroot-2025.08.3
 ```
 
 **Arch note:** If you encounter locale-related build errors, ensure your locale is set:
@@ -585,6 +591,7 @@ Save configuration and exit.
 ### 3.1 Create Package Directory
 
 ```bash
+cd ~/buildroot-2025.08.3
 mkdir -p package/heatex
 ```
 
@@ -689,8 +696,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-Environment="QT_QPA_PLATFORM=eglfs"
-Environment="QT_QPA_EGLFS_ALWAYS_SET_MODE=1"
+Environment="QT_QPA_PLATFORM=linuxfb"
 ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/heatex
 Restart=always
@@ -703,7 +709,7 @@ WantedBy=multi-user.target
 ## Step 4: Enable Your Package
 
 ```bash
-cd ~/buildroot-2024.02
+cd ~/buildroot-2025.08.3
 export BR2_EXTERNAL=~/buildroot-external
 make nconfig
 ```
@@ -753,7 +759,7 @@ Insert the SD card and power on. Your Pi will:
 
 ### Hide Boot Messages
 
-Edit `~/buildroot-2024.02/board/raspberrypi4-64/cmdline.txt`:
+Edit `~/buildroot-2025.08.3/board/raspberrypi4-64/cmdline.txt`:
 
 ```
 console=tty3 quiet loglevel=3 logo.nologo vt.global_cursor_default=0
@@ -783,7 +789,7 @@ To update after code changes:
 cd ~/buildroot-external/heatex-src
 # Make your changes
 
-cd ~/buildroot-2024.02
+cd ~/buildroot-2025.08.3
 make heatex-rebuild
 make
 
