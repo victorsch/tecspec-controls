@@ -157,7 +157,7 @@ void MainWindow::setupUI() {
     logoLabel = new QLabel(this);
 
     // Use SVG renderer for crisp vector graphics
-    QSvgRenderer svgRenderer(QString("/home/victor/source/repos/heatex/prod/alfa.svg"));
+    QSvgRenderer svgRenderer(QString("../alfa.svg"));
     QPixmap logoPixmap(85, 32);  // Original size for sharp rendering
     logoPixmap.fill(Qt::transparent);
 
@@ -206,7 +206,7 @@ void MainWindow::setupUI() {
 
     // Heat exchanger image
     QLabel* imageLabel = new QLabel();
-    QPixmap pixmap("/home/victor/source/repos/heatex/heatex.png");
+    QPixmap pixmap("../heatex.png");
     imageLabel->setPixmap(pixmap.scaled(300, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     imageLabel->setAlignment(Qt::AlignCenter);
 
