@@ -39,6 +39,9 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
 
     setupUI();
 
+    // Hide cursor for embedded kiosk mode
+    QApplication::setOverrideCursor(Qt::BlankCursor);
+
     // Update timer for display (1 Hz)
     updateTimer = new QTimer(this);
     connect(updateTimer, &QTimer::timeout, this, &MainWindow::onUpdateTimer);
@@ -97,6 +100,9 @@ void MainWindow::setupUI() {
             background-color: #1a1a2e;
             color: #e0e0e0;
             font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        *:focus {
+            outline: none;
         }
         QLabel {
             color: #e0e0e0;
