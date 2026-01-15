@@ -40,7 +40,7 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
     setupUI();
 
     // Hide cursor for embedded kiosk mode
-    QApplication::setOverrideCursor(Qt::BlankCursor);
+    //QApplication::setOverrideCursor(Qt::BlankCursor);
 
     // Update timer for display (1 Hz)
     updateTimer = new QTimer(this);
@@ -191,10 +191,6 @@ void MainWindow::setupUI() {
 
     // Status bar
     QHBoxLayout* statusLayout = new QHBoxLayout();
-
-    efficiencyLabel = new QLabel("Efficiency: ---%", this);
-    efficiencyLabel->setStyleSheet("font-size: 18px; font-weight: bold; color: #00d4ff;");
-    statusLayout->addWidget(efficiencyLabel);
 
     statusLayout->addStretch();
 
@@ -419,10 +415,6 @@ void MainWindow::updateDisplay() {
             }
         }
     }
-
-    // Update efficiency
-    float efficiency = sensorManager.calculateEfficiency();
-    efficiencyLabel->setText(QString("Efficiency: %1%").arg(efficiency, 0, 'f', 1));
 
     // Update alarm count
     int alarmCount = alarmManager.getAlarmCount();

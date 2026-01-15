@@ -25,14 +25,14 @@ void Config::initDefaults() {
 
     // Sensor configurations
     sensors = {
-        {"inlet_temp_hot", "Hot Inlet Temperature", "°C", 0, 100, 85, 10},
-        {"outlet_temp_hot", "Hot Outlet Temperature", "°C", 0, 100, 80, 15},
-        {"inlet_temp_cold", "Cold Inlet Temperature", "°C", 0, 50, 40, 5},
-        {"outlet_temp_cold", "Cold Outlet Temperature", "°C", 0, 50, 45, 5},
-        {"flow_rate_hot", "Hot Side Flow Rate", "L/min", 0, 200, 180, 20},
-        {"flow_rate_cold", "Cold Side Flow Rate", "L/min", 0, 200, 180, 20},
-        {"pressure_hot", "Hot Side Pressure", "bar", 0, 10, 8, 0.5f},
-        {"pressure_cold", "Cold Side Pressure", "bar", 0, 10, 8, 0.5f}
+        {"inlet_temp_hot", "Hot Inlet Temperature", "°F", 32, 212, 185, 50},
+        {"outlet_temp_hot", "Hot Outlet Temperature", "°F", 32, 212, 176, 59},
+        {"inlet_temp_cold", "Cold Inlet Temperature", "°F", 32, 122, 104, 41},
+        {"outlet_temp_cold", "Cold Outlet Temperature", "°F", 32, 122, 113, 41},
+        {"flow_rate_hot", "Hot Side Flow Rate", "GPM", 0, 52.8f, 47.6f, 5.3f},
+        {"flow_rate_cold", "Cold Side Flow Rate", "GPM", 0, 52.8f, 47.6f, 5.3f},
+        {"pressure_hot", "Hot Side Pressure", "psi", 0, 145, 116, 7.25f},
+        {"pressure_cold", "Cold Side Pressure", "psi", 0, 145, 116, 7.25f}
     };
 }
 

@@ -11,14 +11,14 @@ SensorManager::SensorManager()
 
 void SensorManager::initializeBaseValues() {
     // Set reasonable base values for simulation
-    baseValues["inlet_temp_hot"] = 65.0f;
-    baseValues["outlet_temp_hot"] = 45.0f;
-    baseValues["inlet_temp_cold"] = 15.0f;
-    baseValues["outlet_temp_cold"] = 35.0f;
-    baseValues["flow_rate_hot"] = 100.0f;
-    baseValues["flow_rate_cold"] = 100.0f;
-    baseValues["pressure_hot"] = 4.0f;
-    baseValues["pressure_cold"] = 3.5f;
+    baseValues["inlet_temp_hot"] = 149.0f;      // °F
+    baseValues["outlet_temp_hot"] = 113.0f;     // °F
+    baseValues["inlet_temp_cold"] = 59.0f;      // °F
+    baseValues["outlet_temp_cold"] = 95.0f;     // °F
+    baseValues["flow_rate_hot"] = 26.4f;        // GPM
+    baseValues["flow_rate_cold"] = 26.4f;       // GPM
+    baseValues["pressure_hot"] = 58.0f;         // psi
+    baseValues["pressure_cold"] = 50.8f;        // psi
 
     // Initialize current values
     for (const auto& [id, base] : baseValues) {

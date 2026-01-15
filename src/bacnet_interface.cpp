@@ -27,6 +27,10 @@ static struct mstimer BACnet_Task_Timer;
 static struct mstimer BACnet_TSM_Timer;
 static struct mstimer BACnet_Address_Timer;
 
+// Static member initialization
+AlarmManager* BACnetInterface::alarmManagerPtr = nullptr;
+std::map<uint32_t, std::pair<std::string, bool>> BACnetInterface::instanceToSensorMap;
+
 BACnetInterface::BACnetInterface() : running(false) {
 }
 
@@ -95,12 +99,12 @@ void BACnetInterface::createObjects() {
         Analog_Input_Present_Value_Set(instance, 0.0f);
 
         // Set units based on sensor unit string
-        if (sensors[i].unit == "°C") {
-            Analog_Input_Units_Set(instance, UNITS_DEGREES_CELSIUS);
-        } else if (sensors[i].unit == "L/min") {
-            Analog_Input_Units_Set(instance, UNITS_LITERS_PER_MINUTE);
-        } else if (sensors[i].unit == "bar") {
-            Analog_Input_Units_Set(instance, UNITS_BARS);
+        if (sensors[i].unit == "°F") {
+            Analog_Input_Units_Set(instance, UNITS_DEGREES_FAHRENHEIT);
+        } else if (sensors[i].unit == "GPM") {
+            Analog_Input_Units_Set(instance, UNITS_US_GALLONS_PER_MINUTE);
+        } else if (sensors[i].unit == "psi") {
+            Analog_Input_Units_Set(instance, UNITS_POUNDS_FORCE_PER_SQUARE_INCH);
         }
 
         printf("  Created AI:%u - %s\n", instance, sensors[i].name.c_str());
@@ -132,6 +136,57 @@ void BACnetInterface::createObjects() {
     Analog_Value_Present_Value_Set(0, 0.0f, 16);
     Analog_Value_Units_Set(0, UNITS_PERCENT);
     printf("  Created AV:0 - Heat Exchanger Efficiency\n");
+
+    // Create Analog Values for alarm setpoints (2 per sensor: LOW and HIGH)
+    uint32_t avInstance = 1;
+    for (size_t i = 0; i < sensors.size(); i++) {
+        const auto& sensor = sensors[i];
+
+        // LOW alarm setpoint (odd instances: 1, 3, 5, ...)
+        Analog_Value_Create(avInstance);
+        std::string lowName = sensor.name + " Low Alarm Setpoint";
+        alarmNames.push_back(lowName);
+        Analog_Value_Name_Set(avInstance, alarmNames.back().c_str());
+        Analog_Value_Present_Value_Set(avInstance, sensor.alarm_low, 16);
+
+        // Set units based on sensor type
+        if (sensor.unit == "°F") {
+            Analog_Value_Units_Set(avInstance, UNITS_DEGREES_FAHRENHEIT);
+        } else if (sensor.unit == "GPM") {
+            Analog_Value_Units_Set(avInstance, UNITS_US_GALLONS_PER_MINUTE);
+        } else if (sensor.unit == "psi") {
+            Analog_Value_Units_Set(avInstance, UNITS_POUNDS_FORCE_PER_SQUARE_INCH);
+        }
+
+        // Map instance to sensor ID and type (false = low)
+        instanceToSensorMap[avInstance] = {sensor.id, false};
+        printf("  Created AV:%u - %s\n", avInstance, alarmNames.back().c_str());
+        avInstance++;
+
+        // HIGH alarm setpoint (even instances: 2, 4, 6, ...)
+        Analog_Value_Create(avInstance);
+        std::string highName = sensor.name + " High Alarm Setpoint";
+        alarmNames.push_back(highName);
+        Analog_Value_Name_Set(avInstance, alarmNames.back().c_str());
+        Analog_Value_Present_Value_Set(avInstance, sensor.alarm_high, 16);
+
+        // Set units based on sensor type
+        if (sensor.unit == "°F") {
+            Analog_Value_Units_Set(avInstance, UNITS_DEGREES_FAHRENHEIT);
+        } else if (sensor.unit == "GPM") {
+            Analog_Value_Units_Set(avInstance, UNITS_US_GALLONS_PER_MINUTE);
+        } else if (sensor.unit == "psi") {
+            Analog_Value_Units_Set(avInstance, UNITS_POUNDS_FORCE_PER_SQUARE_INCH);
+        }
+
+        // Map instance to sensor ID and type (true = high)
+        instanceToSensorMap[avInstance] = {sensor.id, true};
+        printf("  Created AV:%u - %s\n", avInstance, alarmNames.back().c_str());
+        avInstance++;
+    }
+
+    // Register write callback for alarm setpoints
+    Analog_Value_Write_Present_Value_Callback_Set(handleAlarmSetpointWrite);
 }
 
 void BACnetInterface::process() {
@@ -172,6 +227,9 @@ void BACnetInterface::process() {
 void BACnetInterface::updateValues(SensorManager& sensors, AlarmManager& alarms) {
     if (!running) return;
 
+    // Store alarm manager pointer for callback access
+    alarmManagerPtr = &alarms;
+
     const auto& sensorConfigs = Config::instance().getSensors();
     auto values = sensors.getAllValues();
 
@@ -205,5 +263,49 @@ void BACnetInterface::shutdown() {
         datalink_cleanup();
         running = false;
         printf("BACnet interface shutdown\n");
+    }
+}
+
+void BACnetInterface::handleAlarmSetpointWrite(uint32_t instance, float oldValue, float newValue) {
+    // Skip if AV:0 (efficiency - not a setpoint)
+    if (instance == 0) return;
+
+    // Check if this instance is an alarm setpoint
+    auto it = instanceToSensorMap.find(instance);
+    if (it == instanceToSensorMap.end()) {
+        printf("Warning: Write to unknown AV instance %u\n", instance);
+        return;
+    }
+
+    // Check if alarm manager is available
+    if (!alarmManagerPtr) {
+        printf("Error: AlarmManager not available for setpoint write\n");
+        return;
+    }
+
+    const std::string& sensorId = it->second.first;
+    bool isHigh = it->second.second;
+
+    // Validate: high threshold must be > low threshold
+    if (isHigh) {
+        // Writing high threshold - check against current low threshold
+        float lowThreshold = alarmManagerPtr->getLowThreshold(sensorId);
+        if (newValue <= lowThreshold) {
+            printf("Error: High alarm setpoint (%.1f) must be > low alarm setpoint (%.1f) for sensor %s\n",
+                   newValue, lowThreshold, sensorId.c_str());
+            return;
+        }
+        alarmManagerPtr->setHighThreshold(sensorId, newValue);
+        printf("Updated high alarm setpoint for %s: %.1f -> %.1f\n", sensorId.c_str(), oldValue, newValue);
+    } else {
+        // Writing low threshold - check against current high threshold
+        float highThreshold = alarmManagerPtr->getHighThreshold(sensorId);
+        if (newValue >= highThreshold) {
+            printf("Error: Low alarm setpoint (%.1f) must be < high alarm setpoint (%.1f) for sensor %s\n",
+                   newValue, highThreshold, sensorId.c_str());
+            return;
+        }
+        alarmManagerPtr->setLowThreshold(sensorId, newValue);
+        printf("Updated low alarm setpoint for %s: %.1f -> %.1f\n", sensorId.c_str(), oldValue, newValue);
     }
 }

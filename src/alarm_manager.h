@@ -22,6 +22,12 @@ public:
     bool isAlarmActive(const std::string& sensorId, const std::string& type) const;
     int getAlarmCount() const;
 
+    // Threshold management
+    void setHighThreshold(const std::string& sensorId, float threshold);
+    void setLowThreshold(const std::string& sensorId, float threshold);
+    float getHighThreshold(const std::string& sensorId) const;
+    float getLowThreshold(const std::string& sensorId) const;
+
     // Dev/testing methods
     void triggerAlarm(const std::string& sensorId, const std::string& type);
     void resetAlarms();
@@ -30,4 +36,6 @@ private:
     std::map<std::string, bool> alarmStates;  // key: "sensorId_TYPE"
     std::vector<Alarm> activeAlarms;
     bool testModeActive = false;
+    std::map<std::string, float> dynamicHighThresholds;  // key: sensorId
+    std::map<std::string, float> dynamicLowThresholds;   // key: sensorId
 };
