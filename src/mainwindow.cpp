@@ -403,12 +403,23 @@ void MainWindow::updateDisplay() {
                           QString(": %1 ").arg(value, 0, 'f', 1) +
                           QString::fromStdString(sensor.unit);
 
+            // Color based on alarm state
+            bool inAlarm = alarmManager.isAlarmActive(sensor.id, "HIGH") ||
+                           alarmManager.isAlarmActive(sensor.id, "LOW");
+
+            // Add alarm range if in alarm
+            if (inAlarm) {
+                float lowThreshold = alarmManager.getLowThreshold(sensor.id);
+                float highThreshold = alarmManager.getHighThreshold(sensor.id);
+                text += QString(" (Range: %1 - %2)")
+                        .arg(lowThreshold, 0, 'f', 1)
+                        .arg(highThreshold, 0, 'f', 1);
+            }
+
             QLabel* label = sensorLabels[sensor.id];
             label->setText(text);
 
-            // Color based on alarm state
-            if (alarmManager.isAlarmActive(sensor.id, "HIGH") ||
-                alarmManager.isAlarmActive(sensor.id, "LOW")) {
+            if (inAlarm) {
                 label->setStyleSheet("font-size: 14px; padding: 5px; color: #ff6b6b; font-weight: bold;");
             } else {
                 label->setStyleSheet("font-size: 14px; padding: 5px; color: #4ade80;");

@@ -12,7 +12,7 @@ Config::Config() {
 void Config::initDefaults() {
     // Display settings
     display.width = 800;
-    display.height = 480;
+    display.height = 600;
     display.fullscreen = false;
     display.devMode = true;  // Set to false for production
 
