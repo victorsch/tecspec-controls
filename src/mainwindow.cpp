@@ -28,6 +28,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QHeaderView>
+#include <QScroller>
 #include <poppler/qt6/poppler-qt6.h>
 
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
@@ -374,6 +375,7 @@ void MainWindow::setupUI() {
 
     pdfScrollArea->setWidget(pdfContainer);
     iomLayout->addWidget(pdfScrollArea);
+    QScroller::grabGesture(pdfScrollArea->viewport(), QScroller::TouchGesture);
     tabWidget->addTab(iomTab, "IOM");
 
     // Parts List tab
@@ -433,6 +435,7 @@ void MainWindow::setupUI() {
     }
 
     partsLayout->addWidget(partsTable);
+    QScroller::grabGesture(partsTable->viewport(), QScroller::TouchGesture);
     tabWidget->addTab(partsTab, "Parts List");
 
     // Dev tab (conditional)

@@ -5,8 +5,15 @@
 #include "alarm_manager.h"
 #include "bacnet_interface.h"
 #include <cstdio>
+#include <cstdlib>
 
 int main(int argc, char* argv[]) {
+    // Set scale factor before QApplication is created
+    const auto& displayConfig = Config::instance().getDisplayConfig();
+    if (displayConfig.scaleFactor != 1.0f) {
+        qputenv("QT_SCALE_FACTOR", QByteArray::number(displayConfig.scaleFactor));
+    }
+
     QApplication app(argc, argv);
 
     printf("Heat Exchanger BMS - C++ Production Build\n");

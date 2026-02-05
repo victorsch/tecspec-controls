@@ -28,6 +28,7 @@ struct DisplayConfig {
     int height;
     bool fullscreen;
     bool devMode;
+    float scaleFactor;
 };
 
 class Config {
