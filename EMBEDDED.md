@@ -405,6 +405,9 @@ Your Pi should now:
 
 ## Troubleshooting
 
+### Screen size is weird
+Try changing the QT scaling in src/config.cpp to 1.0 instead of 0.8
+
 ### Application Won't Start
 
 Check logs:
