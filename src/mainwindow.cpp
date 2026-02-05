@@ -211,29 +211,62 @@ void MainWindow::setupUI() {
 
     monitoringLayout->addLayout(statusLayout);
 
-    // Heat exchanger image
+    // Three-column layout: Hot | Image | Cold
+    QHBoxLayout* columnsLayout = new QHBoxLayout();
+    columnsLayout->setSpacing(20);
+
+    // Heat exchanger image (center)
     QLabel* imageLabel = new QLabel();
     QPixmap pixmap("../heatex.png");
-    imageLabel->setPixmap(pixmap.scaled(600, 400, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    imageLabel->setPixmap(pixmap.scaled(400, 500, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     imageLabel->setAlignment(Qt::AlignCenter);
 
-    // Sensor grid
-    QGridLayout* sensorGrid = new QGridLayout();
-
-    // Hot side (left)
+    // Hot side (left column)
     QGroupBox* hotGroup = new QGroupBox("Hot Side", this);
-    hotGroup->setStyleSheet("QGroupBox { font-weight: bold; color: #ff6b6b; border-color: #ff6b6b; }");
+    hotGroup->setStyleSheet(R"(
+        QGroupBox {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ff6b6b;
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 15px;
+            padding: 0 10px;
+        }
+    )");
     QVBoxLayout* hotLayout = new QVBoxLayout(hotGroup);
+    hotLayout->setSpacing(15);
 
-    // Cold side (right)
+    // Cold side (right column)
     QGroupBox* coldGroup = new QGroupBox("Cold Side", this);
-    coldGroup->setStyleSheet("QGroupBox { font-weight: bold; color: #00d4ff; border-color: #00d4ff; }");
+    coldGroup->setStyleSheet(R"(
+        QGroupBox {
+            font-size: 22px;
+            font-weight: bold;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 15px;
+            padding: 0 10px;
+        }
+    )");
     QVBoxLayout* coldLayout = new QVBoxLayout(coldGroup);
+    coldLayout->setSpacing(15);
 
     const auto& sensorConfigs = Config::instance().getSensors();
     for (const auto& sensor : sensorConfigs) {
         QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
-        label->setStyleSheet("font-size: 14px; padding: 5px;");
+        label->setStyleSheet("font-size: 20px; padding: 10px;");
         sensorLabels[sensor.id] = label;
 
         // Route to appropriate side
@@ -244,13 +277,16 @@ void MainWindow::setupUI() {
         }
     }
 
-    sensorGrid->addWidget(hotGroup, 0, 0);
-    sensorGrid->addWidget(coldGroup, 0, 1);
+    hotLayout->addStretch();
+    coldLayout->addStretch();
+
+    columnsLayout->addWidget(hotGroup, 1);
+    columnsLayout->addWidget(imageLabel, 0);
+    columnsLayout->addWidget(coldGroup, 1);
 
     monitoringLayout->addWidget(title);
     monitoringLayout->addLayout(statusLayout);
-    monitoringLayout->addWidget(imageLabel);
-    monitoringLayout->addLayout(sensorGrid);
+    monitoringLayout->addLayout(columnsLayout, 1);
     monitoringLayout->addStretch();
 
     tabWidget->addTab(monitoringTab, "Monitoring");
@@ -536,9 +572,9 @@ void MainWindow::updateDisplay() {
             label->setText(text);
 
             if (inAlarm) {
-                label->setStyleSheet("font-size: 14px; padding: 5px; color: #ff6b6b; font-weight: bold;");
+                label->setStyleSheet("font-size: 20px; padding: 10px; color: #ff6b6b; font-weight: bold;");
             } else {
-                label->setStyleSheet("font-size: 14px; padding: 5px; color: #4ade80;");
+                label->setStyleSheet("font-size: 20px; padding: 10px; color: #4ade80;");
             }
         }
     }
