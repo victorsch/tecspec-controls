@@ -25,6 +25,7 @@
 #include <qrencode.h>
 #include <QSvgRenderer>
 #include <QPainter>
+#include <poppler/qt6/poppler-qt6.h>
 
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
                        BACnetInterface& bacnet, QWidget* parent)
@@ -321,8 +322,58 @@ void MainWindow::setupUI() {
 
     tabWidget->addTab(graphsTab, "Graphs");
     tabWidget->addTab(settingsTab, "Settings");
-    // Dev tab (conditional)
+
+    // IOM tab (PDF viewer for installation/operation manual)
     const auto& displayConfig = Config::instance().getDisplayConfig();
+
+    QWidget* iomTab = new QWidget();
+    QVBoxLayout* iomLayout = new QVBoxLayout(iomTab);
+    iomLayout->setContentsMargins(0, 0, 0, 0);
+
+    pdfScrollArea = new QScrollArea(this);
+    pdfScrollArea->setWidgetResizable(true);
+    pdfScrollArea->setStyleSheet("QScrollArea { border: none; background: #2a2a3e; }");
+
+    pdfContainer = new QWidget();
+    pdfPageLayout = new QVBoxLayout(pdfContainer);
+    pdfPageLayout->setAlignment(Qt::AlignHCenter);
+    pdfPageLayout->setSpacing(10);
+
+    pdfDocument = Poppler::Document::load(QString("../iom.pdf"));
+    if (pdfDocument && !pdfDocument->isLocked()) {
+        pdfDocument->setRenderHint(Poppler::Document::TextAntialiasing);
+        pdfDocument->setRenderHint(Poppler::Document::Antialiasing);
+
+        // Calculate DPI to fit page width to screen (with margin for scrollbar)
+        int availableWidth = displayConfig.width - 40;  // Account for scrollbar and margins
+
+        // Render all pages
+        for (int i = 0; i < pdfDocument->numPages(); i++) {
+            std::unique_ptr<Poppler::Page> page = pdfDocument->page(i);
+            if (page) {
+                // Page size is in points (1/72 inch)
+                QSizeF pageSize = page->pageSizeF();
+                double dpi = (availableWidth / pageSize.width()) * 72.0;
+
+                QImage image = page->renderToImage(dpi, dpi);
+                QLabel* pageLabel = new QLabel();
+                pageLabel->setPixmap(QPixmap::fromImage(image));
+                pageLabel->setAlignment(Qt::AlignCenter);
+                pdfPageLayout->addWidget(pageLabel);
+            }
+        }
+    } else {
+        QLabel* errorLabel = new QLabel("Could not load IOM PDF.\nPlace iom.pdf in the application directory.");
+        errorLabel->setAlignment(Qt::AlignCenter);
+        errorLabel->setStyleSheet("font-size: 16px; color: #ff6b6b; padding: 20px;");
+        pdfPageLayout->addWidget(errorLabel);
+    }
+
+    pdfScrollArea->setWidget(pdfContainer);
+    iomLayout->addWidget(pdfScrollArea);
+    tabWidget->addTab(iomTab, "IOM");
+
+    // Dev tab (conditional)
     if (displayConfig.devMode) {
         QWidget* devTab = new QWidget();
         QVBoxLayout* devLayout = new QVBoxLayout(devTab);

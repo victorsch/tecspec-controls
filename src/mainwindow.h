@@ -11,8 +11,13 @@
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
+#include <QScrollArea>
 #include <map>
 #include <memory>
+
+namespace Poppler {
+    class Document;
+}
 
 
 
@@ -66,4 +71,10 @@ private:
     QValueAxis* axisY;
     std::string selectedSensorId;
     int selectedTimeRange;  // seconds
+
+    // PDF viewer components
+    QScrollArea* pdfScrollArea;
+    QWidget* pdfContainer;
+    QVBoxLayout* pdfPageLayout;
+    std::unique_ptr<Poppler::Document> pdfDocument;
 };

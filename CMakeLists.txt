@@ -9,6 +9,8 @@ set(CMAKE_AUTOUIC ON)
 
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Svg)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(POPPLER_QT6 REQUIRED poppler-qt6)
 
 # BACnet stack paths - use local copy in repo
 set(BACNET_STACK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/bacnet-stack")
@@ -45,10 +47,13 @@ target_compile_definitions(heatex PRIVATE
 )
 
 # Link libraries
+target_include_directories(heatex PRIVATE ${POPPLER_QT6_INCLUDE_DIRS})
+
 target_link_libraries(heatex PRIVATE
     Qt6::Widgets
     Qt6::Charts
     Qt6::Svg
+    ${POPPLER_QT6_LIBRARIES}
     ${BACNET_LIB_DIR}/libbacnet-stack.a
     pthread
     qrencode
