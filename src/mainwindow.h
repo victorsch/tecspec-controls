@@ -12,6 +12,7 @@
 #include <QtCharts/QLineSeries>
 #include <QtCharts/QValueAxis>
 #include <QScrollArea>
+#include <QTableWidget>
 #include <map>
 #include <memory>
 
@@ -77,4 +78,7 @@ private:
     QWidget* pdfContainer;
     QVBoxLayout* pdfPageLayout;
     std::unique_ptr<Poppler::Document> pdfDocument;
+
+    // Parts list components
+    QTableWidget* partsTable;
 };

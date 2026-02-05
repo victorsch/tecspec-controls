@@ -25,6 +25,9 @@
 #include <qrencode.h>
 #include <QSvgRenderer>
 #include <QPainter>
+#include <QFile>
+#include <QTextStream>
+#include <QHeaderView>
 #include <poppler/qt6/poppler-qt6.h>
 
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
@@ -372,6 +375,65 @@ void MainWindow::setupUI() {
     pdfScrollArea->setWidget(pdfContainer);
     iomLayout->addWidget(pdfScrollArea);
     tabWidget->addTab(iomTab, "IOM");
+
+    // Parts List tab
+    QWidget* partsTab = new QWidget();
+    QVBoxLayout* partsLayout = new QVBoxLayout(partsTab);
+
+    partsTable = new QTableWidget(this);
+    partsTable->setColumnCount(3);
+    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
+    partsTable->horizontalHeader()->setStretchLastSection(true);
+    partsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    partsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    partsTable->setAlternatingRowColors(true);
+    partsTable->setStyleSheet(R"(
+        QTableWidget {
+            background-color: #1a1a2e;
+            alternate-background-color: #16213e;
+            gridline-color: #0f3460;
+        }
+        QTableWidget::item {
+            padding: 8px;
+        }
+        QTableWidget::item:selected {
+            background-color: #0f3460;
+        }
+        QHeaderView::section {
+            background-color: #0f3460;
+            color: #00d4ff;
+            padding: 10px;
+            border: 1px solid #1a1a2e;
+            font-weight: bold;
+        }
+    )");
+
+    // Load CSV data
+    QFile csvFile("../parts_list.csv");
+    if (csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&csvFile);
+        bool firstLine = true;
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            if (firstLine) {
+                firstLine = false;
+                continue;  // Skip header
+            }
+            QStringList fields = line.split(',');
+            if (fields.size() >= 5) {
+                int row = partsTable->rowCount();
+                partsTable->insertRow(row);
+                partsTable->setItem(row, 0, new QTableWidgetItem(fields[2].trimmed()));  // Item No
+                partsTable->setItem(row, 1, new QTableWidgetItem(fields[3].trimmed()));  // Item Description
+                partsTable->setItem(row, 2, new QTableWidgetItem(fields[4].trimmed()));  // Quantity
+            }
+        }
+        csvFile.close();
+    }
+
+    partsLayout->addWidget(partsTable);
+    tabWidget->addTab(partsTab, "Parts List");
 
     // Dev tab (conditional)
     if (displayConfig.devMode) {
