@@ -27,15 +27,14 @@ int main(int argc, char* argv[]) {
     AlarmManager alarmManager;
     BACnetInterface bacnetInterface;
 
-    // Initialize BACnet
+    // Initialize BACnet (non-fatal if it fails)
     if (!bacnetInterface.initialize(bacnetConfig.device_id, bacnetConfig.device_name)) {
-        fprintf(stderr, "Failed to initialize BACnet interface\n");
-        return 1;
+        fprintf(stderr, "Warning: BACnet initialization failed - running without network\n");
+    } else {
+        printf("\nBACnet Device ID: %u\n", bacnetConfig.device_id);
+        printf("BACnet Device Name: %s\n", bacnetConfig.device_name.c_str());
+        printf("BACnet Port: %u\n\n", bacnetConfig.ip_port);
     }
-
-    printf("\nBACnet Device ID: %u\n", bacnetConfig.device_id);
-    printf("BACnet Device Name: %s\n", bacnetConfig.device_name.c_str());
-    printf("BACnet Port: %u\n\n", bacnetConfig.ip_port);
 
     // Create and show main window
     MainWindow window(sensorManager, alarmManager, bacnetInterface);

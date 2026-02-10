@@ -56,8 +56,12 @@ bool BACnetInterface::initialize(uint32_t deviceId, const std::string& deviceNam
     // Create our objects
     createObjects();
 
-    // Initialize datalink
-    dlenv_init();
+    // Initialize datalink - may fail without network
+    if (!datalink_init(NULL)) {
+        printf("Warning: BACnet datalink init failed - no network available\n");
+        running = false;
+        return false;
+    }
 
     // Send I-Am broadcast
     Send_I_Am(&Handler_Transmit_Buffer[0]);
