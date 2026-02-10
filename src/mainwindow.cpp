@@ -421,8 +421,10 @@ void MainWindow::setupUI() {
     partsTable = new QTableWidget(this);
     partsTable->setColumnCount(3);
     partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
-    partsTable->horizontalHeader()->setStretchLastSection(true);
+    partsTable->verticalHeader()->setVisible(false);  // Hide row numbers
+    partsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     partsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    partsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     partsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     partsTable->setAlternatingRowColors(true);
