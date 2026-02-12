@@ -13,8 +13,12 @@
 #include <QtCharts/QValueAxis>
 #include <QScrollArea>
 #include <QTableWidget>
+#include <QGraphicsView>
+#include <QGraphicsScene>
 #include <map>
 #include <memory>
+
+class QPinchGesture;
 
 namespace Poppler {
     class Document;
@@ -74,11 +78,19 @@ private:
     int selectedTimeRange;  // seconds
 
     // PDF viewer components
-    QScrollArea* pdfScrollArea;
-    QWidget* pdfContainer;
-    QVBoxLayout* pdfPageLayout;
+    QGraphicsView* pdfView;
+    QGraphicsScene* pdfScene;
     std::unique_ptr<Poppler::Document> pdfDocument;
+    bool event(QEvent* event) override;
+    void handlePinchGesture(QPinchGesture* gesture);
 
     // Parts list components
     QTableWidget* partsTable;
+    QLineEdit* orderPartNumber;
+    QLineEdit* orderPartName;
+    QLineEdit* orderQuantity;
+    QLabel* orderQrLabel;
+    QLabel* orderQrHint;
+
+    void onGenerateOrder();
 };
