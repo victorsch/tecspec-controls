@@ -4,6 +4,8 @@
 #include "bacnet_interface.h"
 #include "config.h"
 
+#include <QApplication>
+#include <QCursor>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -46,8 +48,13 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
 
     setupUI();
 
-    // Hide cursor for embedded kiosk mode
-    //QApplication::setOverrideCursor(Qt::BlankCursor);
+    // Hide cursor for embedded kiosk mode (transparent pixmap works on eglfs/linuxfb
+    // where Qt::BlankCursor is ignored)
+    if (!displayConfig.devMode) {
+        QPixmap cursorPixmap(1, 1);
+        cursorPixmap.fill(Qt::transparent);
+        QApplication::setOverrideCursor(QCursor(cursorPixmap));
+    }
 
     // Update timer for display (1 Hz)
     updateTimer = new QTimer(this);

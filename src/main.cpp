@@ -14,6 +14,12 @@ int main(int argc, char* argv[]) {
         qputenv("QT_SCALE_FACTOR", QByteArray::number(displayConfig.scaleFactor));
     }
 
+    // Hide hardware cursor on embedded platforms (eglfs/linuxfb)
+    if (!displayConfig.devMode) {
+        qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
+        qputenv("QT_QPA_FB_HIDECURSOR", "1");
+    }
+
     QApplication app(argc, argv);
 
     printf("Heat Exchanger BMS - C++ Production Build\n");
