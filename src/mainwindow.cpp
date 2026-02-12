@@ -464,14 +464,16 @@ void MainWindow::setupUI() {
 
     pdfScene = new QGraphicsScene(this);
     pdfView = new QGraphicsView(pdfScene, this);
-    pdfView->setDragMode(QGraphicsView::ScrollHandDrag);
     pdfView->setRenderHint(QPainter::Antialiasing);
     pdfView->setRenderHint(QPainter::SmoothPixmapTransform);
     pdfView->setStyleSheet("QGraphicsView { border: none; background: #2a2a3e; }");
     pdfView->grabGesture(Qt::PinchGesture);
     pdfView->viewport()->grabGesture(Qt::PinchGesture);
     pdfView->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
+    pdfView->setAttribute(Qt::WA_AcceptTouchEvents);
     pdfView->installEventFilter(this);
+    pdfView->viewport()->installEventFilter(this);
+    QScroller::grabGesture(pdfView->viewport(), QScroller::TouchGesture);
 
     pdfDocument = Poppler::Document::load(QString("../iom.pdf"));
     if (pdfDocument && !pdfDocument->isLocked()) {
@@ -500,6 +502,7 @@ void MainWindow::setupUI() {
     }
 
     iomLayout->addWidget(pdfView);
+
     tabWidget->addTab(iomTab, "IOM");
 
     // Parts List tab
