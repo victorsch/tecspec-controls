@@ -165,6 +165,42 @@ void MainWindow::setupUI() {
             color: #e0e0e0;
             selection-background-color: #0f3460;
         }
+        QScrollBar:vertical {
+            background: transparent;
+            width: 8px;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: #0f3460;
+            border-radius: 4px;
+            min-height: 30px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #00d4ff;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            background: transparent;
+            height: 0px;
+        }
+        QScrollBar:horizontal {
+            background: transparent;
+            height: 8px;
+            margin: 0;
+        }
+        QScrollBar::handle:horizontal {
+            background: #0f3460;
+            border-radius: 4px;
+            min-width: 30px;
+        }
+        QScrollBar::handle:horizontal:hover {
+            background: #00d4ff;
+        }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal,
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+            background: transparent;
+            width: 0px;
+        }
     )");
 
     QWidget* monitoringTab = new QWidget();
@@ -573,9 +609,10 @@ void MainWindow::setupUI() {
 
     partsTable = new QTableWidget(this);
     partsTable->setColumnCount(3);
-    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Qty"});
+    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
     partsTable->verticalHeader()->setVisible(false);
-    partsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    partsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    partsTable->setColumnWidth(0, 240);
     partsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     partsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -684,9 +721,9 @@ void MainWindow::setupUI() {
             border: 2px solid #0f3460;
             border-radius: 6px;
             color: white;
-            padding: 8px;
-            font-size: 16px;
-            min-height: 36px;
+            padding: 4px;
+            font-size: 18px;
+            min-height: 32px;
         }
         QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
             width: 0px;
@@ -699,14 +736,13 @@ void MainWindow::setupUI() {
         QPushButton {
             background: #0f3460;
             color: #00d4ff;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: bold;
             border: 2px solid #0f3460;
             border-radius: 6px;
-            min-width: 48px;
-            min-height: 48px;
-            max-width: 48px;
-            max-height: 48px;
+            min-width: 36px;
+            max-width: 36px;
+            padding: 0px;
         }
         QPushButton:pressed {
             background: #1a1a2e;
