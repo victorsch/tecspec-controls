@@ -660,9 +660,15 @@ void MainWindow::setupUI() {
             if (fields.size() >= 5) {
                 int row = partsTable->rowCount();
                 partsTable->insertRow(row);
-                partsTable->setItem(row, 0, new QTableWidgetItem(fields[2].trimmed()));  // Item No
-                partsTable->setItem(row, 1, new QTableWidgetItem(fields[3].trimmed()));  // Item Description
-                partsTable->setItem(row, 2, new QTableWidgetItem(fields[4].trimmed()));  // Quantity
+                auto* itemNo = new QTableWidgetItem(fields[2].trimmed());
+                itemNo->setTextAlignment(Qt::AlignCenter);
+                partsTable->setItem(row, 0, itemNo);
+                auto* itemDesc = new QTableWidgetItem(fields[3].trimmed());
+                itemDesc->setTextAlignment(Qt::AlignCenter);
+                partsTable->setItem(row, 1, itemDesc);
+                auto* itemQty = new QTableWidgetItem(fields[4].trimmed());
+                itemQty->setTextAlignment(Qt::AlignCenter);
+                partsTable->setItem(row, 2, itemQty);
                 partsTable->setRowHeight(row, 48);
             }
         }
