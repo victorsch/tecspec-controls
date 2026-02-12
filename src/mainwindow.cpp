@@ -430,7 +430,7 @@ void MainWindow::setupUI() {
     chartSeries = new QLineSeries();
     QChart* chart = new QChart();
     chart->addSeries(chartSeries);
-    chart->setTitle("Sensor Value Over Time");
+    chart->setTitle(sensorComboBox->currentText());
     chart->legend()->hide();
 
     // Create axes
@@ -552,7 +552,7 @@ void MainWindow::setupUI() {
     orderLayout->addWidget(partLabel);
 
     orderPartNumber = new QLineEdit(this);
-    orderPartNumber->setPlaceholderText("Enter part number");
+    orderPartNumber->setPlaceholderText("Select an item from the table");
     orderPartNumber->setStyleSheet(inputStyle);
     orderLayout->addWidget(orderPartNumber);
 
@@ -561,7 +561,7 @@ void MainWindow::setupUI() {
     orderLayout->addWidget(nameLabel);
 
     orderPartName = new QLineEdit(this);
-    orderPartName->setPlaceholderText("Enter part name");
+    orderPartName->setPlaceholderText("Select an item from the table");
     orderPartName->setStyleSheet(inputStyle);
     orderLayout->addWidget(orderPartName);
 
@@ -570,7 +570,7 @@ void MainWindow::setupUI() {
     orderLayout->addWidget(qtyLabel);
 
     orderQuantity = new QLineEdit(this);
-    orderQuantity->setPlaceholderText("Enter quantity");
+    orderQuantity->setPlaceholderText("Select an item from the table");
     orderQuantity->setStyleSheet(inputStyle);
     orderLayout->addWidget(orderQuantity);
 
@@ -1072,6 +1072,7 @@ void MainWindow::onResetAlarms() {
 void MainWindow::onSensorSelected(int index) {
     if (index >= 0) {
         selectedSensorId = sensorComboBox->itemData(index).toString().toStdString();
+        chartView->chart()->setTitle(sensorComboBox->currentText());
         updateChart();
     }
 }
