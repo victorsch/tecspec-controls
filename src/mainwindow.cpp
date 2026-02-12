@@ -425,7 +425,9 @@ void MainWindow::setupUI() {
     pdfView->setRenderHint(QPainter::SmoothPixmapTransform);
     pdfView->setStyleSheet("QGraphicsView { border: none; background: #2a2a3e; }");
     pdfView->grabGesture(Qt::PinchGesture);
-    QScroller::grabGesture(pdfView->viewport(), QScroller::TouchGesture);
+    pdfView->viewport()->grabGesture(Qt::PinchGesture);
+    pdfView->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
+    pdfView->installEventFilter(this);
 
     pdfDocument = Poppler::Document::load(QString("../iom.pdf"));
     if (pdfDocument && !pdfDocument->isLocked()) {
@@ -906,6 +908,17 @@ bool MainWindow::event(QEvent* event) {
         }
     }
     return QMainWindow::event(event);
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
+    if ((obj == pdfView || obj == pdfView->viewport()) && event->type() == QEvent::Gesture) {
+        QGestureEvent* gestureEvent = static_cast<QGestureEvent*>(event);
+        if (QPinchGesture* pinch = static_cast<QPinchGesture*>(gestureEvent->gesture(Qt::PinchGesture))) {
+            handlePinchGesture(pinch);
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::handlePinchGesture(QPinchGesture* gesture) {

@@ -82,6 +82,7 @@ private:
     QGraphicsScene* pdfScene;
     std::unique_ptr<Poppler::Document> pdfDocument;
     bool event(QEvent* event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
     void handlePinchGesture(QPinchGesture* gesture);
 
     // Parts list components
