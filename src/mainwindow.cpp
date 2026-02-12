@@ -171,7 +171,8 @@ void MainWindow::setupUI() {
     QVBoxLayout* monitoringLayout = new QVBoxLayout(monitoringTab);
 
     QWidget* settingsTab = new QWidget();
-    QVBoxLayout* settingsLayout = new QVBoxLayout(settingsTab);
+    QHBoxLayout* settingsColumnsLayout = new QHBoxLayout(settingsTab);
+    settingsColumnsLayout->setSpacing(20);
 
     // Alfa Laval logo (SVG rendered in white) - for tab bar corner
     logoLabel = new QLabel(this);
@@ -648,6 +649,241 @@ void MainWindow::setupUI() {
     partsColumnsLayout->addWidget(orderGroup, 1);
     partsColumnsLayout->addWidget(tableContainer, 2);
     tabWidget->addTab(partsTab, "Parts List");
+    // === Left Column: Alarm Thresholds ===
+    QGroupBox* thresholdGroup = new QGroupBox("Alarm Thresholds", this);
+    thresholdGroup->setStyleSheet(R"(
+        QGroupBox {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 15px;
+            padding: 0 10px;
+        }
+    )");
+    QVBoxLayout* thresholdOuterLayout = new QVBoxLayout(thresholdGroup);
+
+    QScrollArea* thresholdScroll = new QScrollArea(this);
+    thresholdScroll->setWidgetResizable(true);
+    thresholdScroll->setStyleSheet("QScrollArea { border: none; background: transparent; }");
+    QScroller::grabGesture(thresholdScroll->viewport(), QScroller::TouchGesture);
+
+    QWidget* thresholdContainer = new QWidget();
+    QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdContainer);
+    thresholdLayout->setSpacing(12);
+
+    QString spinBoxStyle = R"(
+        QDoubleSpinBox {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 6px;
+            color: white;
+            padding: 8px;
+            font-size: 16px;
+            min-height: 36px;
+        }
+        QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+            width: 0px;
+            height: 0px;
+            border: none;
+        }
+    )";
+
+    QString incDecBtnStyle = R"(
+        QPushButton {
+            background: #0f3460;
+            color: #00d4ff;
+            font-size: 22px;
+            font-weight: bold;
+            border: 2px solid #0f3460;
+            border-radius: 6px;
+            min-width: 48px;
+            min-height: 48px;
+            max-width: 48px;
+            max-height: 48px;
+        }
+        QPushButton:pressed {
+            background: #1a1a2e;
+            border-color: #00d4ff;
+        }
+    )";
+
+    for (const auto& sensor : Config::instance().getSensors()) {
+        QLabel* sensorLabel = new QLabel(QString::fromStdString(sensor.name), this);
+        sensorLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #e0e0e0; padding-top: 6px;");
+        thresholdLayout->addWidget(sensorLabel);
+
+        QHBoxLayout* rangeRow = new QHBoxLayout();
+        rangeRow->setSpacing(8);
+
+        // Low threshold
+        QLabel* lowLabel = new QLabel("Low:", this);
+        lowLabel->setStyleSheet("font-size: 14px; color: #aaa;");
+        rangeRow->addWidget(lowLabel);
+
+        QPushButton* lowMinus = new QPushButton("-", this);
+        lowMinus->setStyleSheet(incDecBtnStyle);
+        rangeRow->addWidget(lowMinus);
+
+        QDoubleSpinBox* lowSpin = new QDoubleSpinBox(this);
+        lowSpin->setRange(sensor.min, sensor.max);
+        lowSpin->setDecimals(1);
+        lowSpin->setSingleStep(0.5);
+        lowSpin->setValue(alarmManager.getLowThreshold(sensor.id));
+        lowSpin->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        lowSpin->setStyleSheet(spinBoxStyle);
+        lowSpin->setReadOnly(true);
+        rangeRow->addWidget(lowSpin);
+        thresholdLowEdits[sensor.id] = lowSpin;
+
+        QPushButton* lowPlus = new QPushButton("+", this);
+        lowPlus->setStyleSheet(incDecBtnStyle);
+        rangeRow->addWidget(lowPlus);
+
+        connect(lowMinus, &QPushButton::clicked, [lowSpin]() { lowSpin->stepDown(); });
+        connect(lowPlus, &QPushButton::clicked, [lowSpin]() { lowSpin->stepUp(); });
+
+        rangeRow->addSpacing(16);
+
+        // High threshold
+        QLabel* highLabel = new QLabel("High:", this);
+        highLabel->setStyleSheet("font-size: 14px; color: #aaa;");
+        rangeRow->addWidget(highLabel);
+
+        QPushButton* highMinus = new QPushButton("-", this);
+        highMinus->setStyleSheet(incDecBtnStyle);
+        rangeRow->addWidget(highMinus);
+
+        QDoubleSpinBox* highSpin = new QDoubleSpinBox(this);
+        highSpin->setRange(sensor.min, sensor.max);
+        highSpin->setDecimals(1);
+        highSpin->setSingleStep(0.5);
+        highSpin->setValue(alarmManager.getHighThreshold(sensor.id));
+        highSpin->setButtonSymbols(QAbstractSpinBox::NoButtons);
+        highSpin->setStyleSheet(spinBoxStyle);
+        highSpin->setReadOnly(true);
+        rangeRow->addWidget(highSpin);
+        thresholdHighEdits[sensor.id] = highSpin;
+
+        QPushButton* highPlus = new QPushButton("+", this);
+        highPlus->setStyleSheet(incDecBtnStyle);
+        rangeRow->addWidget(highPlus);
+
+        connect(highMinus, &QPushButton::clicked, [highSpin]() { highSpin->stepDown(); });
+        connect(highPlus, &QPushButton::clicked, [highSpin]() { highSpin->stepUp(); });
+
+        thresholdLayout->addLayout(rangeRow);
+    }
+
+    thresholdLayout->addStretch();
+    thresholdScroll->setWidget(thresholdContainer);
+    thresholdOuterLayout->addWidget(thresholdScroll);
+
+    QPushButton* saveThresholdsBtn = new QPushButton("Save", this);
+    saveThresholdsBtn->setStyleSheet(R"(
+        QPushButton {
+            background: #0f3460;
+            color: #00d4ff;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px;
+            border-radius: 6px;
+            border: 2px solid #00d4ff;
+        }
+        QPushButton:pressed {
+            background: #1a1a2e;
+        }
+    )");
+    connect(saveThresholdsBtn, &QPushButton::clicked, this, &MainWindow::onSaveThresholds);
+    thresholdOuterLayout->addWidget(saveThresholdsBtn);
+
+    settingsColumnsLayout->addWidget(thresholdGroup, 1);
+
+    // === Right Column: About Section ===
+    QGroupBox* aboutGroup = new QGroupBox("About", this);
+    aboutGroup->setStyleSheet(R"(
+        QGroupBox {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 15px;
+            padding: 0 10px;
+        }
+    )");
+    QVBoxLayout* aboutLayout = new QVBoxLayout(aboutGroup);
+    aboutLayout->setSpacing(10);
+
+    const auto& bacnetConfig = Config::instance().getBACnetConfig();
+
+    auto addInfoRow = [&](const QString& label, const QString& value) {
+        QHBoxLayout* row = new QHBoxLayout();
+        QLabel* lbl = new QLabel(label, this);
+        lbl->setStyleSheet("font-size: 16px; color: #aaa;");
+        QLabel* val = new QLabel(value, this);
+        val->setStyleSheet("font-size: 16px; color: #e0e0e0; font-weight: bold;");
+        row->addWidget(lbl);
+        row->addStretch();
+        row->addWidget(val);
+        aboutLayout->addLayout(row);
+    };
+
+    addInfoRow("Device Name:", QString::fromStdString(bacnetConfig.device_name));
+    addInfoRow("Device ID:", QString::number(bacnetConfig.device_id));
+    addInfoRow("Vendor ID:", QString::number(bacnetConfig.vendor_id));
+    addInfoRow("IP Address:", QString::fromStdString(bacnetConfig.ip_address));
+    addInfoRow("Port:", QString::number(bacnetConfig.ip_port));
+
+    aboutLayout->addSpacing(20);
+
+    // QR code for website
+    QString aboutUrl = "https://www.srs-enterprises.com";
+    QRcode* aboutQr = QRcode_encodeString(aboutUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
+    if (aboutQr) {
+        int scale = 10;
+        int qrSize = aboutQr->width * scale;
+        QImage qrImage(qrSize, qrSize, QImage::Format_RGB32);
+        qrImage.fill(Qt::white);
+
+        for (int y = 0; y < aboutQr->width; y++) {
+            for (int x = 0; x < aboutQr->width; x++) {
+                if (aboutQr->data[y * aboutQr->width + x] & 1) {
+                    for (int sy = 0; sy < scale; sy++) {
+                        for (int sx = 0; sx < scale; sx++) {
+                            qrImage.setPixel(x * scale + sx, y * scale + sy, qRgb(0, 0, 0));
+                        }
+                    }
+                }
+            }
+        }
+        QRcode_free(aboutQr);
+
+        QLabel* aboutQrLabel = new QLabel(this);
+        aboutQrLabel->setPixmap(QPixmap::fromImage(qrImage));
+        aboutQrLabel->setAlignment(Qt::AlignCenter);
+        aboutLayout->addWidget(aboutQrLabel);
+
+        QLabel* aboutQrHint = new QLabel("Scan for more details", this);
+        aboutQrHint->setStyleSheet("font-size: 16px; color: white;");
+        aboutQrHint->setAlignment(Qt::AlignCenter);
+        aboutLayout->addWidget(aboutQrHint);
+    }
+
+    aboutLayout->addStretch();
+    settingsColumnsLayout->addWidget(aboutGroup, 1);
+
     tabWidget->addTab(settingsTab, "Settings");
 
     // Dev tab (conditional)
@@ -968,4 +1204,13 @@ void MainWindow::onGenerateOrder() {
 
     orderQrLabel->setPixmap(QPixmap::fromImage(qrImage));
     orderQrHint->show();
+}
+
+void MainWindow::onSaveThresholds() {
+    for (auto& [sensorId, spin] : thresholdLowEdits) {
+        alarmManager.setLowThreshold(sensorId, spin->value());
+    }
+    for (auto& [sensorId, spin] : thresholdHighEdits) {
+        alarmManager.setHighThreshold(sensorId, spin->value());
+    }
 }

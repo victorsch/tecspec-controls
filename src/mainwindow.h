@@ -6,6 +6,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <QLineEdit>
+#include <QDoubleSpinBox>
 #include <QPushButton>
 #include <QComboBox>
 #include <QtCharts/QChartView>
@@ -93,5 +94,10 @@ private:
     QLabel* orderQrLabel;
     QLabel* orderQrHint;
 
+    // Settings tab components
+    std::map<std::string, QDoubleSpinBox*> thresholdLowEdits;
+    std::map<std::string, QDoubleSpinBox*> thresholdHighEdits;
+
     void onGenerateOrder();
+    void onSaveThresholds();
 };
