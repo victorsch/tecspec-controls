@@ -264,7 +264,9 @@ void MainWindow::setupUI() {
     // Heat exchanger image (center)
     QLabel* imageLabel = new QLabel();
     QPixmap pixmap("../heatex.png");
-    imageLabel->setPixmap(pixmap.scaled(400, 500, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    QTransform flip;
+    flip.scale(1, -1);
+    imageLabel->setPixmap(pixmap.transformed(flip).scaled(400, 500, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     imageLabel->setAlignment(Qt::AlignCenter);
 
     // Hot side (left column)
