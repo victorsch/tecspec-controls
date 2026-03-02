@@ -33,6 +33,11 @@
 #include <QScroller>
 #include <QGestureEvent>
 #include <QGraphicsPixmapItem>
+#include <QStackedLayout>
+#include <QMediaPlayer>
+#include <QVideoWidget>
+#include <QListWidget>
+#include <QAudioOutput>
 #include <poppler/qt6/poppler-qt6.h>
 
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
@@ -259,7 +264,7 @@ void MainWindow::setupUI() {
 
     // Three-column layout: Hot | Image | Cold
     QHBoxLayout* columnsLayout = new QHBoxLayout();
-    columnsLayout->setSpacing(20);
+    columnsLayout->setSpacing(10);
 
     // Heat exchanger image (center)
     QLabel* imageLabel = new QLabel();
@@ -273,13 +278,13 @@ void MainWindow::setupUI() {
     QGroupBox* hotGroup = new QGroupBox("Hot Side", this);
     hotGroup->setStyleSheet(R"(
         QGroupBox {
-            font-size: 22px;
+            font-size: 16px;
             font-weight: bold;
             color: #ff6b6b;
             border: 2px solid #ff6b6b;
             border-radius: 10px;
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 12px;
+            padding: 8px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -288,19 +293,19 @@ void MainWindow::setupUI() {
         }
     )");
     QVBoxLayout* hotLayout = new QVBoxLayout(hotGroup);
-    hotLayout->setSpacing(15);
+    hotLayout->setSpacing(8);
 
     // Cold side (right column)
     QGroupBox* coldGroup = new QGroupBox("Cold Side", this);
     coldGroup->setStyleSheet(R"(
         QGroupBox {
-            font-size: 22px;
+            font-size: 16px;
             font-weight: bold;
             color: #00d4ff;
             border: 2px solid #00d4ff;
             border-radius: 10px;
-            margin-top: 20px;
-            padding: 15px;
+            margin-top: 12px;
+            padding: 8px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -309,12 +314,12 @@ void MainWindow::setupUI() {
         }
     )");
     QVBoxLayout* coldLayout = new QVBoxLayout(coldGroup);
-    coldLayout->setSpacing(15);
+    coldLayout->setSpacing(8);
 
     const auto& sensorConfigs = Config::instance().getSensors();
     for (const auto& sensor : sensorConfigs) {
         QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
-        label->setStyleSheet("font-size: 26px; padding: 10px;");
+        label->setStyleSheet("font-size: 22px; padding: 5px;");
         sensorLabels[sensor.id] = label;
 
         // Route to appropriate side
@@ -697,6 +702,229 @@ void MainWindow::setupUI() {
     partsColumnsLayout->addWidget(orderGroup, 1);
     partsColumnsLayout->addWidget(tableContainer, 2);
     tabWidget->addTab(partsTab, "Parts List");
+
+    // Videos tab
+    QWidget* videosTab = new QWidget();
+    QHBoxLayout* videosLayout = new QHBoxLayout(videosTab);
+    videosLayout->setSpacing(0);
+    videosLayout->setContentsMargins(0, 0, 0, 0);
+
+    // Left panel - video list
+    videoList = new QListWidget(this);
+    videoList->setFixedWidth(260);
+    videoList->setStyleSheet(R"(
+        QListWidget {
+            background: #0f3460;
+            border: none;
+            font-size: 18px;
+            color: white;
+        }
+        QListWidget::item {
+            padding: 18px 15px;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        QListWidget::item:selected {
+            background: #00d4ff;
+            color: #1a1a2e;
+        }
+        QListWidget::item:hover:!selected {
+            background: #16213e;
+        }
+    )");
+
+    struct VideoEntry { QString title; QString file; };
+    const QList<VideoEntry> videos = {
+        { "How it Works",          "" },
+        { "Exploded Parts View",   "../exploded.mp4" },
+        { "Opening Heat Exchanger","" },
+        { "Cleaning",              "" },
+        { "Changing Gaskets",      "" },
+        { "Closing Heat Exchanger","" },
+    };
+    for (const auto& v : videos) {
+        QListWidgetItem* item = new QListWidgetItem(v.title, videoList);
+        item->setData(Qt::UserRole, v.file);
+        if (v.file.isEmpty()) {
+            item->setForeground(QColor("#666"));
+        }
+    }
+
+    // Right panel
+    QWidget* videoRight = new QWidget(this);
+    QVBoxLayout* videoRightLayout = new QVBoxLayout(videoRight);
+    videoRightLayout->setContentsMargins(0, 0, 0, 0);
+    videoRightLayout->setSpacing(0);
+
+    videoPlayer = new QMediaPlayer(this);
+    audioOutput = new QAudioOutput(this);
+    videoPlayer->setAudioOutput(audioOutput);
+
+    // "No video" placeholder
+    videoUnavailableLabel = new QLabel("Select a video from the list", this);
+    videoUnavailableLabel->setAlignment(Qt::AlignCenter);
+    videoUnavailableLabel->setStyleSheet("font-size: 20px; color: #aaa; background: #1a1a2e;");
+
+    // Video container with overlay using StackAll
+    videoContainer = new QWidget(this);
+    QStackedLayout* videoStack = new QStackedLayout(videoContainer);
+    videoStack->setStackingMode(QStackedLayout::StackAll);
+    videoStack->setContentsMargins(0, 0, 0, 0);
+
+    videoWidget = new QVideoWidget();
+    videoWidget->setStyleSheet("background: black;");
+    videoPlayer->setVideoOutput(videoWidget);
+
+    // Transparent click-to-play overlay (no children needed)
+    videoClickArea = new QWidget();
+    videoClickArea->setStyleSheet("background: transparent;");
+    videoClickArea->installEventFilter(this);
+
+    // Controls bar lives below the video so QVideoWidget can't paint over it
+    videoControlsBar = new QWidget();
+    videoControlsBar->setStyleSheet("background: #0d0d1a;");
+    QVBoxLayout* controlsBarLayout = new QVBoxLayout(videoControlsBar);
+    controlsBarLayout->setContentsMargins(15, 8, 15, 10);
+    controlsBarLayout->setSpacing(6);
+
+    // Seek slider
+    videoSeekSlider = new QSlider(Qt::Horizontal);
+    videoSeekSlider->setStyleSheet(R"(
+        QSlider::groove:horizontal {
+            height: 6px;
+            background: #444;
+            border-radius: 3px;
+        }
+        QSlider::sub-page:horizontal {
+            background: #00d4ff;
+            border-radius: 3px;
+        }
+        QSlider::handle:horizontal {
+            width: 22px;
+            height: 22px;
+            margin: -8px 0;
+            border-radius: 11px;
+            background: white;
+        }
+    )");
+    controlsBarLayout->addWidget(videoSeekSlider);
+
+    // Play/pause button + time label
+    QHBoxLayout* controlsRow = new QHBoxLayout();
+    controlsRow->setSpacing(15);
+
+    videoPauseButton = new QPushButton("▶", this);
+    videoPauseButton->setStyleSheet(R"(
+        QPushButton {
+            font-size: 22px;
+            color: white;
+            background: transparent;
+            border: none;
+            padding: 0 10px;
+        }
+        QPushButton:pressed { color: #00d4ff; }
+    )");
+    videoPauseButton->setFixedWidth(50);
+
+    videoTimeLabel = new QLabel("0:00 / 0:00", this);
+    videoTimeLabel->setStyleSheet("font-size: 16px; color: #ccc;");
+
+    controlsRow->addWidget(videoPauseButton);
+    controlsRow->addWidget(videoTimeLabel);
+    controlsRow->addStretch();
+    controlsBarLayout->addLayout(controlsRow);
+
+    videoStack->addWidget(videoWidget);
+    videoStack->addWidget(videoClickArea);
+
+    videoRightLayout->addWidget(videoUnavailableLabel);
+    videoRightLayout->addWidget(videoContainer, 1);
+    videoRightLayout->addWidget(videoControlsBar);
+    videoContainer->hide();
+    videoControlsBar->hide();
+
+    // Format ms as m:ss
+    auto formatTime = [](qint64 ms) -> QString {
+        qint64 s = ms / 1000;
+        return QString("%1:%2").arg(s / 60).arg(s % 60, 2, 10, QChar('0'));
+    };
+
+    connect(videoPlayer, &QMediaPlayer::positionChanged, this, [this, formatTime](qint64 pos) {
+        if (!videoSeekSlider->isSliderDown())
+            videoSeekSlider->setValue(pos);
+        videoTimeLabel->setText(formatTime(pos) + " / " + formatTime(videoPlayer->duration()));
+    });
+
+    connect(videoPlayer, &QMediaPlayer::durationChanged, this, [this](qint64 duration) {
+        videoSeekSlider->setRange(0, duration);
+    });
+
+    connect(videoSeekSlider, &QSlider::sliderMoved, videoPlayer, &QMediaPlayer::setPosition);
+
+    connect(videoPauseButton, &QPushButton::clicked, this, [this]() {
+        if (videoPlayer->playbackState() == QMediaPlayer::PlayingState) {
+            videoPlayer->pause();
+        } else {
+            videoPlayer->play();
+        }
+    });
+
+    connect(videoPlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+        videoPauseButton->setText(state == QMediaPlayer::PlayingState ? "⏸" : "▶");
+    });
+
+    videosLayout->addWidget(videoList);
+    videosLayout->addWidget(videoRight, 1);
+
+    connect(videoList, &QListWidget::itemClicked, this, &MainWindow::onVideoSelected);
+
+    tabWidget->addTab(videosTab, "Videos");
+
+    // Support tab
+    QWidget* supportTab = new QWidget();
+    QVBoxLayout* supportLayout = new QVBoxLayout(supportTab);
+    supportLayout->setAlignment(Qt::AlignCenter);
+    supportLayout->setSpacing(20);
+
+    QLabel* supportTitle = new QLabel("Need help? Scan the QR code below to visit our support page.", this);
+    supportTitle->setAlignment(Qt::AlignCenter);
+    supportTitle->setStyleSheet("font-size: 20px; color: white;");
+    supportTitle->setWordWrap(true);
+    supportLayout->addWidget(supportTitle);
+
+    QLabel* supportSubtitle = new QLabel("Your product details will be automatically submitted with your support request.", this);
+    supportSubtitle->setAlignment(Qt::AlignCenter);
+    supportSubtitle->setStyleSheet("font-size: 16px; color: #aaa;");
+    supportSubtitle->setWordWrap(true);
+    supportLayout->addWidget(supportSubtitle);
+
+    QString supportUrl = "https://www.srs-enterprises.com/support";
+    QRcode* supportQr = QRcode_encodeString(supportUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
+    if (supportQr) {
+        int scale = 10;
+        int qrSize = supportQr->width * scale;
+        QImage qrImage(qrSize, qrSize, QImage::Format_RGB32);
+        qrImage.fill(Qt::white);
+        for (int y = 0; y < supportQr->width; y++) {
+            for (int x = 0; x < supportQr->width; x++) {
+                if (supportQr->data[y * supportQr->width + x] & 1) {
+                    for (int sy = 0; sy < scale; sy++) {
+                        for (int sx = 0; sx < scale; sx++) {
+                            qrImage.setPixel(x * scale + sx, y * scale + sy, qRgb(0, 0, 0));
+                        }
+                    }
+                }
+            }
+        }
+        QRcode_free(supportQr);
+
+        QLabel* supportQrLabel = new QLabel(this);
+        supportQrLabel->setPixmap(QPixmap::fromImage(qrImage));
+        supportQrLabel->setAlignment(Qt::AlignCenter);
+        supportLayout->addWidget(supportQrLabel);
+    }
+
+    tabWidget->addTab(supportTab, "Support");
+
     // === Left Column: Alarm Thresholds ===
     QGroupBox* thresholdGroup = new QGroupBox("Alarm Thresholds", this);
     thresholdGroup->setStyleSheet(R"(
@@ -735,6 +963,7 @@ void MainWindow::setupUI() {
             padding: 4px;
             font-size: 18px;
             min-height: 32px;
+            qproperty-alignment: AlignCenter;
         }
         QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
             width: 0px;
@@ -753,6 +982,7 @@ void MainWindow::setupUI() {
             border-radius: 6px;
             min-width: 36px;
             max-width: 36px;
+            min-height: 44px;
             padding: 0px;
         }
         QPushButton:pressed {
@@ -1031,9 +1261,9 @@ void MainWindow::updateDisplay() {
             label->setText(text);
 
             if (inAlarm) {
-                label->setStyleSheet("font-size: 26px; padding: 10px; color: #ff6b6b; font-weight: bold;");
+                label->setStyleSheet("font-size: 22px; padding: 5px; color: #ff6b6b; font-weight: bold;");
             } else {
-                label->setStyleSheet("font-size: 26px; padding: 10px; color: #4ade80;");
+                label->setStyleSheet("font-size: 22px; padding: 5px; color: #4ade80;");
             }
         }
     }
@@ -1209,12 +1439,39 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
             return true;
         }
     }
+    if (obj == videoClickArea && event->type() == QEvent::MouseButtonPress) {
+        if (videoPlayer->playbackState() == QMediaPlayer::PlayingState)
+            videoPlayer->pause();
+        else
+            videoPlayer->play();
+        return true;
+    }
     return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::handlePinchGesture(QPinchGesture* gesture) {
     qreal scaleFactor = gesture->scaleFactor();
     pdfView->scale(scaleFactor, scaleFactor);
+}
+
+void MainWindow::onVideoSelected(QListWidgetItem* item) {
+    QString file = item->data(Qt::UserRole).toString();
+    if (file.isEmpty()) {
+        videoPlayer->stop();
+        videoContainer->hide();
+        videoControlsBar->hide();
+        videoUnavailableLabel->setText("\"" + item->text() + "\" — coming soon");
+        videoUnavailableLabel->show();
+        return;
+    }
+    videoUnavailableLabel->hide();
+    videoContainer->show();
+    videoControlsBar->show();
+    videoSeekSlider->setValue(0);
+    videoTimeLabel->setText("0:00 / 0:00");
+    videoPauseButton->setText("⏸");
+    videoPlayer->setSource(QUrl::fromLocalFile(file));
+    videoPlayer->play();
 }
 
 void MainWindow::onGenerateOrder() {

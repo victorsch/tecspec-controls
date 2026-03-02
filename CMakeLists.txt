@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # Find Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Svg)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Svg Multimedia MultimediaWidgets)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(POPPLER_QT6 REQUIRED poppler-qt6)
 
@@ -53,6 +53,8 @@ target_link_libraries(heatex PRIVATE
     Qt6::Widgets
     Qt6::Charts
     Qt6::Svg
+    Qt6::Multimedia
+    Qt6::MultimediaWidgets
     ${POPPLER_QT6_LIBRARIES}
     ${BACNET_LIB_DIR}/libbacnet-stack.a
     pthread

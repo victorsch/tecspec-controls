@@ -16,6 +16,11 @@
 #include <QTableWidget>
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <QVideoWidget>
+#include <QListWidget>
+#include <QSlider>
 #include <map>
 #include <memory>
 
@@ -47,6 +52,7 @@ private slots:
     void onSensorSelected(int index);
     void onTimeRangeSelected(int index);
     void onDiagnoseClicked();
+    void onVideoSelected(QListWidgetItem* item);
 
 private:
     void setupUI();
@@ -100,4 +106,17 @@ private:
 
     void onGenerateOrder();
     void onSaveThresholds();
+
+    // Video tab components
+    QMediaPlayer* videoPlayer;
+    QAudioOutput* audioOutput;
+    QVideoWidget* videoWidget;
+    QWidget* videoContainer;
+    QListWidget* videoList;
+    QLabel* videoUnavailableLabel;
+    QPushButton* videoPauseButton;
+    QSlider* videoSeekSlider;
+    QLabel* videoTimeLabel;
+    QWidget* videoClickArea;
+    QWidget* videoControlsBar;
 };
