@@ -79,6 +79,24 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
 MainWindow::~MainWindow() {
 }
 
+static QPixmap bellPixmap(const QColor& color, int size) {
+    static const char* svg =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"
+        "M18 16V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5"
+        "s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z'/>"
+        "</svg>";
+    QByteArray svgData(svg);
+    QSvgRenderer renderer(svgData);
+    QPixmap px(size, size);
+    px.fill(Qt::transparent);
+    QPainter painter(&px);
+    renderer.render(&painter);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.fillRect(px.rect(), color);
+    return px;
+}
+
 // Central widget that paints the gradient+grain backdrop for all transparent children
 namespace {
 class BgWidget : public QWidget {
@@ -92,39 +110,60 @@ public:
 void MainWindow::setupUI() {
     const auto& displayConfig = Config::instance().getDisplayConfig();
 
-    // Pre-generate background: flat navy base + corner vignette + film grain
+    // Pre-generate background: flat navy base + soft bloom patches + vignette + dense grain
     const int W = displayConfig.width, H = displayConfig.height;
     m_bgPixmap = QPixmap(W, H);
     {
         QPainter p(&m_bgPixmap);
+        p.setRenderHint(QPainter::Antialiasing);
 
-        // 1. Flat dark-navy base — no bright centre
+        std::mt19937 rng(42);
+
+        // 1. Flat dark-navy base
         p.fillRect(m_bgPixmap.rect(), QColor(0x16, 0x16, 0x32));
 
-        // 2. Vignette: transparent centre → near-black corners
-        //    Radius covers the full half-diagonal so all four corners go dark
-        double halfDiag = qSqrt(W * W + H * H) / 2.0;
+        // 2. Soft organic bloom patches — these are what grain "brightens up"
+        //    Scattered across the centre two-thirds of the screen
+        struct Bloom { int cx, cy, r, a; };
+        std::uniform_int_distribution<int> bx(W / 5,     4 * W / 5);
+        std::uniform_int_distribution<int> by(H / 5,     4 * H / 5);
+        std::uniform_int_distribution<int> br(W / 8,     W / 3);
+        std::uniform_int_distribution<int> ba(14, 38);
+        for (int i = 0; i < 7; i++) {
+            int cx = bx(rng), cy = by(rng), r = br(rng), a = ba(rng);
+            QRadialGradient bloom(cx, cy, r);
+            bloom.setColorAt(0.0, QColor(155, 165, 215, a));
+            bloom.setColorAt(0.5, QColor(130, 140, 200, a / 3));
+            bloom.setColorAt(1.0, QColor(100, 110, 180, 0));
+            p.fillRect(cx - r, cy - r, r * 2, r * 2, QBrush(bloom));
+        }
+
+        // 3. Vignette: transparent centre → near-black corners
+        double halfDiag = qSqrt(double(W * W + H * H)) / 2.0;
         QRadialGradient vignette(W * 0.5, H * 0.5, halfDiag);
         vignette.setColorAt(0.0,  QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.42, QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.72, QColor(0, 0, 0,  90));
-        vignette.setColorAt(1.0,  QColor(0, 0, 0, 180));
+        vignette.setColorAt(0.40, QColor(0, 0, 0,   0));
+        vignette.setColorAt(0.70, QColor(0, 0, 0,  85));
+        vignette.setColorAt(1.0,  QColor(0, 0, 0, 185));
         p.fillRect(m_bgPixmap.rect(), vignette);
 
-        // 3. Film-grain: dense 1-px speckle, mix of light and dark flecks
-        std::mt19937 rng(42);
+        // 4. Dense film grain — two passes so grain reads over both the dark
+        //    and light areas, integrating with the bloom patches below
         std::uniform_int_distribution<int> rx(0, W - 1);
         std::uniform_int_distribution<int> ry(0, H - 1);
-        std::uniform_int_distribution<int> ra(3, 18);
-        std::uniform_int_distribution<int> rb(0, 1);   // light vs dark
+        std::uniform_int_distribution<int> ra(2, 22);
+        std::uniform_int_distribution<int> rb(0, 2);   // 0=dark, 1-2=light
 
-        for (int i = 0; i < 14000; i++) {
-            int a = ra(rng);
-            if (rb(rng))
-                p.setPen(QColor(190, 200, 240, a));      // light speck
+        for (int i = 0; i < 35000; i++) {
+            int x = rx(rng), y = ry(rng), a = ra(rng);
+            int kind = rb(rng);
+            if (kind == 0)
+                p.setPen(QColor(0, 0, 8, a + 10));           // dark speck
+            else if (kind == 1)
+                p.setPen(QColor(185, 195, 235, a));           // mid light speck
             else
-                p.setPen(QColor(0, 0, 10, a + 8));       // dark speck
-            p.drawPoint(rx(rng), ry(rng));
+                p.setPen(QColor(220, 228, 255, a / 2 + 2));  // bright highlight speck
+            p.drawPoint(x, y);
         }
     }
 
@@ -309,8 +348,12 @@ void MainWindow::setupUI() {
 
     statusLayout->addStretch();
 
+    alarmBellLabel = new QLabel(this);
+    alarmBellLabel->setPixmap(bellPixmap(QColor("#4ade80"), 30));
+    statusLayout->addWidget(alarmBellLabel);
+
     alarmCountLabel = new QLabel("Alarms: 0", this);
-    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #4CAF50;");
+    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #4ade80;");
     statusLayout->addWidget(alarmCountLabel);
 
     diagnoseButton = new QPushButton("Diagnose", this);
@@ -1348,9 +1391,11 @@ void MainWindow::updateDisplay() {
     int alarmCount = alarmManager.getAlarmCount();
     alarmCountLabel->setText(QString("Alarms: %1").arg(alarmCount));
     if (alarmCount > 0) {
+        alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
         alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
         diagnoseButton->show();
     } else {
+        alarmBellLabel->setPixmap(bellPixmap(QColor("#4ade80"), 30));
         alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #4ade80;");
         diagnoseButton->hide();
     }

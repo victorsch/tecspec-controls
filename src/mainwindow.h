@@ -70,6 +70,7 @@ private:
     // UI elements
     std::map<std::string, QLabel*> sensorLabels;
     QLabel* alarmCountLabel;
+    QLabel* alarmBellLabel;
     QPushButton* diagnoseButton;
     QLabel* logoLabel;
 
