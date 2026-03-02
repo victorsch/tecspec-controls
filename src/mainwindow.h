@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QPixmap>
 #include <QTimer>
 #include <QLabel>
 #include <QTabWidget>
@@ -91,6 +92,7 @@ private:
     bool event(QEvent* event) override;
     bool eventFilter(QObject* obj, QEvent* event) override;
     void handlePinchGesture(QPinchGesture* gesture);
+    QPixmap m_bgPixmap;
 
     // Parts list components
     QTableWidget* partsTable;

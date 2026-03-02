@@ -27,6 +27,10 @@
 #include <qrencode.h>
 #include <QSvgRenderer>
 #include <QPainter>
+#include <QPen>
+#include <QBrush>
+#include <QRadialGradient>
+#include <random>
 #include <QFile>
 #include <QTextStream>
 #include <QHeaderView>
@@ -75,8 +79,56 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
 MainWindow::~MainWindow() {
 }
 
+// Central widget that paints the gradient+grain backdrop for all transparent children
+namespace {
+class BgWidget : public QWidget {
+    QPixmap m_px;
+public:
+    BgWidget(const QPixmap& px, QWidget* parent = nullptr) : QWidget(parent), m_px(px) {}
+    void paintEvent(QPaintEvent*) override { QPainter(this).drawPixmap(0, 0, m_px); }
+};
+} // namespace
+
 void MainWindow::setupUI() {
-    QWidget* central = new QWidget(this);
+    const auto& displayConfig = Config::instance().getDisplayConfig();
+
+    // Pre-generate background: flat navy base + corner vignette + film grain
+    const int W = displayConfig.width, H = displayConfig.height;
+    m_bgPixmap = QPixmap(W, H);
+    {
+        QPainter p(&m_bgPixmap);
+
+        // 1. Flat dark-navy base — no bright centre
+        p.fillRect(m_bgPixmap.rect(), QColor(0x16, 0x16, 0x32));
+
+        // 2. Vignette: transparent centre → near-black corners
+        //    Radius covers the full half-diagonal so all four corners go dark
+        double halfDiag = qSqrt(W * W + H * H) / 2.0;
+        QRadialGradient vignette(W * 0.5, H * 0.5, halfDiag);
+        vignette.setColorAt(0.0,  QColor(0, 0, 0,   0));
+        vignette.setColorAt(0.42, QColor(0, 0, 0,   0));
+        vignette.setColorAt(0.72, QColor(0, 0, 0,  90));
+        vignette.setColorAt(1.0,  QColor(0, 0, 0, 180));
+        p.fillRect(m_bgPixmap.rect(), vignette);
+
+        // 3. Film-grain: dense 1-px speckle, mix of light and dark flecks
+        std::mt19937 rng(42);
+        std::uniform_int_distribution<int> rx(0, W - 1);
+        std::uniform_int_distribution<int> ry(0, H - 1);
+        std::uniform_int_distribution<int> ra(3, 18);
+        std::uniform_int_distribution<int> rb(0, 1);   // light vs dark
+
+        for (int i = 0; i < 14000; i++) {
+            int a = ra(rng);
+            if (rb(rng))
+                p.setPen(QColor(190, 200, 240, a));      // light speck
+            else
+                p.setPen(QColor(0, 0, 10, a + 8));       // dark speck
+            p.drawPoint(rx(rng), ry(rng));
+        }
+    }
+
+    BgWidget* central = new BgWidget(m_bgPixmap, this);
     setCentralWidget(central);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(central);
@@ -86,13 +138,16 @@ void MainWindow::setupUI() {
 
     // Modern HMI styling
     tabWidget->setStyleSheet(R"(
+        QTabWidget, QTabBar {
+            background: transparent;
+        }
         QTabWidget::pane {
-            border: 1px solid #0f3460;
-            background: #1a1a2e;
+            border: 1px solid #2a2a52;
+            background: transparent;
             border-radius: 8px;
         }
         QTabBar::tab {
-            background: #16213e;
+            background: #10102c;
             color: #a0a0a0;
             padding: 18px 36px;
             margin-right: 2px;
@@ -103,12 +158,12 @@ void MainWindow::setupUI() {
         }
         QTabBar::tab:selected {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #0f3460, stop:1 #1a1a2e);
+                stop:0 #22224a, stop:1 #141428);
             color: #00d4ff;
             border-bottom: 2px solid #00d4ff;
         }
         QTabBar::tab:hover:!selected {
-            background: #1f4068;
+            background: #1e1e40;
             color: #e0e0e0;
         }
     )");
@@ -116,7 +171,7 @@ void MainWindow::setupUI() {
     // Set overall window style
     central->setStyleSheet(R"(
         QWidget {
-            background-color: #1a1a2e;
+            background: transparent;
             color: #e0e0e0;
             font-family: 'Segoe UI', Arial, sans-serif;
         }
@@ -124,10 +179,12 @@ void MainWindow::setupUI() {
             outline: none;
         }
         QLabel {
+            background: transparent;
             color: #e0e0e0;
         }
         QGroupBox {
-            border: 1px solid #0f3460;
+            background: transparent;
+            border: 1px solid #2a2a52;
             border-radius: 6px;
             margin-top: 12px;
             padding-top: 12px;
@@ -138,24 +195,24 @@ void MainWindow::setupUI() {
             padding: 0 5px;
         }
         QPushButton {
-            background: #16213e;
+            background: #18183a;
             color: #e0e0e0;
-            border: 1px solid #0f3460;
+            border: 1px solid #2a2a52;
             border-radius: 4px;
             padding: 8px 16px;
             font-weight: bold;
         }
         QPushButton:hover {
-            background: #1f4068;
+            background: #21213e;
             border-color: #00d4ff;
         }
         QPushButton:pressed {
-            background: #0f3460;
+            background: #141428;
         }
         QComboBox {
-            background: #16213e;
+            background: #18183a;
             color: #e0e0e0;
-            border: 1px solid #0f3460;
+            border: 1px solid #2a2a52;
             border-radius: 4px;
             padding: 6px 12px;
         }
@@ -166,9 +223,9 @@ void MainWindow::setupUI() {
             border: none;
         }
         QComboBox QAbstractItemView {
-            background: #16213e;
+            background: #18183a;
             color: #e0e0e0;
-            selection-background-color: #0f3460;
+            selection-background-color: #1e2044;
         }
         QScrollBar:vertical {
             background: transparent;
@@ -176,7 +233,7 @@ void MainWindow::setupUI() {
             margin: 0;
         }
         QScrollBar::handle:vertical {
-            background: #0f3460;
+            background: #2a2a52;
             border-radius: 4px;
             min-height: 30px;
         }
@@ -194,7 +251,7 @@ void MainWindow::setupUI() {
             margin: 0;
         }
         QScrollBar::handle:horizontal {
-            background: #0f3460;
+            background: #2a2a52;
             border-radius: 4px;
             min-width: 30px;
         }
@@ -209,9 +266,11 @@ void MainWindow::setupUI() {
     )");
 
     QWidget* monitoringTab = new QWidget();
+    monitoringTab->setStyleSheet("background: transparent;");
     QVBoxLayout* monitoringLayout = new QVBoxLayout(monitoringTab);
 
     QWidget* settingsTab = new QWidget();
+    settingsTab->setStyleSheet("background: transparent;");
     QHBoxLayout* settingsColumnsLayout = new QHBoxLayout(settingsTab);
     settingsColumnsLayout->setSpacing(20);
 
@@ -346,6 +405,7 @@ void MainWindow::setupUI() {
 
     // Graphs tab
     QWidget* graphsTab = new QWidget();
+    graphsTab->setStyleSheet("background: transparent;");
     QVBoxLayout* graphsLayout = new QVBoxLayout(graphsTab);
 
     // Sensor selector dropdown
@@ -354,9 +414,9 @@ void MainWindow::setupUI() {
             font-size: 18px;
             padding: 10px 15px;
             min-height: 30px;
-            background: #16213e;
+            background: #18183a;
             color: white;
-            border: 2px solid #0f3460;
+            border: 2px solid #2a2a52;
             border-radius: 6px;
         }
         QComboBox::drop-down {
@@ -364,21 +424,21 @@ void MainWindow::setupUI() {
         }
         QComboBox QAbstractItemView {
             font-size: 28px;
-            background: #16213e;
+            background: #18183a;
             color: white;
             outline: none;
         }
         QComboBox QAbstractItemView::item {
             min-height: 60px;
             padding: 18px 15px;
-            border-bottom: 2px solid #0f3460;
+            border-bottom: 2px solid #2a2a52;
         }
         QComboBox QAbstractItemView::item:selected {
             background-color: #00d4ff;
-            color: #1a1a2e;
+            color: #141428;
         }
         QComboBox QAbstractItemView::item:hover {
-            background-color: #1f4068;
+            background-color: #21213e;
         }
     )";
 
@@ -433,26 +493,40 @@ void MainWindow::setupUI() {
 
     // Create chart
     chartSeries = new QLineSeries();
+    chartSeries->setColor(QColor("#00d4ff"));
     QChart* chart = new QChart();
     chart->addSeries(chartSeries);
     chart->setTitle(sensorComboBox->currentText());
+    chart->setTitleBrush(QBrush(QColor("#00d4ff")));
     chart->legend()->hide();
+    chart->setBackgroundBrush(QBrush(QColor("#141428")));
+    chart->setPlotAreaBackgroundBrush(QBrush(QColor("#18183a")));
+    chart->setPlotAreaBackgroundVisible(true);
 
     // Create axes
     axisX = new QValueAxis();
     axisX->setTitleText("Time (seconds)");
     axisX->setRange(0, 60);
     axisX->setLabelFormat("%d");
+    axisX->setTitleBrush(QBrush(QColor("#a0a0b0")));
+    axisX->setLabelsBrush(QBrush(QColor("#a0a0b0")));
+    axisX->setLinePenColor(QColor("#2a2a52"));
+    axisX->setGridLinePen(QPen(QColor("#22224a"), 1));
     chart->addAxis(axisX, Qt::AlignBottom);
     chartSeries->attachAxis(axisX);
 
     axisY = new QValueAxis();
     axisY->setTitleText("Value");
+    axisY->setTitleBrush(QBrush(QColor("#a0a0b0")));
+    axisY->setLabelsBrush(QBrush(QColor("#a0a0b0")));
+    axisY->setLinePenColor(QColor("#2a2a52"));
+    axisY->setGridLinePen(QPen(QColor("#22224a"), 1));
     chart->addAxis(axisY, Qt::AlignLeft);
     chartSeries->attachAxis(axisY);
 
     chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setStyleSheet("background: #141428; border: none;");
     graphsLayout->addWidget(chartView);
 
     // Initialize with first sensor
@@ -463,9 +537,8 @@ void MainWindow::setupUI() {
     tabWidget->addTab(graphsTab, "Graphs");
 
     // IOM tab (PDF viewer for installation/operation manual)
-    const auto& displayConfig = Config::instance().getDisplayConfig();
-
     QWidget* iomTab = new QWidget();
+    iomTab->setStyleSheet("background: transparent;");
     QVBoxLayout* iomLayout = new QVBoxLayout(iomTab);
     iomLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -473,7 +546,7 @@ void MainWindow::setupUI() {
     pdfView = new QGraphicsView(pdfScene, this);
     pdfView->setRenderHint(QPainter::Antialiasing);
     pdfView->setRenderHint(QPainter::SmoothPixmapTransform);
-    pdfView->setStyleSheet("QGraphicsView { border: none; background: #2a2a3e; }");
+    pdfView->setStyleSheet("QGraphicsView { border: none; background: #1e1e40; }");
     pdfView->grabGesture(Qt::PinchGesture);
     pdfView->viewport()->grabGesture(Qt::PinchGesture);
     pdfView->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
@@ -514,6 +587,7 @@ void MainWindow::setupUI() {
 
     // Parts List tab
     QWidget* partsTab = new QWidget();
+    partsTab->setStyleSheet("background: transparent;");
     QHBoxLayout* partsColumnsLayout = new QHBoxLayout(partsTab);
     partsColumnsLayout->setSpacing(20);
 
@@ -540,8 +614,8 @@ void MainWindow::setupUI() {
 
     QString inputStyle = R"(
         QLineEdit {
-            background: #16213e;
-            border: 2px solid #0f3460;
+            background: #18183a;
+            border: 2px solid #2a2a52;
             border-radius: 6px;
             color: white;
             padding: 10px;
@@ -582,7 +656,7 @@ void MainWindow::setupUI() {
     QPushButton* generateBtn = new QPushButton("Generate Order Form", this);
     generateBtn->setStyleSheet(R"(
         QPushButton {
-            background: #0f3460;
+            background: #1e2044;
             color: #00d4ff;
             font-size: 18px;
             font-weight: bold;
@@ -591,7 +665,7 @@ void MainWindow::setupUI() {
             border: 2px solid #00d4ff;
         }
         QPushButton:pressed {
-            background: #1a1a2e;
+            background: #141428;
         }
     )");
     connect(generateBtn, &QPushButton::clicked, this, &MainWindow::onGenerateOrder);
@@ -631,22 +705,22 @@ void MainWindow::setupUI() {
     partsTable->setAlternatingRowColors(true);
     partsTable->setStyleSheet(R"(
         QTableWidget {
-            background-color: #1a1a2e;
-            alternate-background-color: #16213e;
-            gridline-color: #0f3460;
+            background-color: #141428;
+            alternate-background-color: #18183a;
+            gridline-color: #22224a;
             font-size: 16px;
         }
         QTableWidget::item {
             padding: 12px 8px;
         }
         QTableWidget::item:selected {
-            background-color: #0f3460;
+            background-color: #1e2044;
         }
         QHeaderView::section {
-            background-color: #0f3460;
+            background-color: #1e2044;
             color: #00d4ff;
             padding: 12px;
-            border: 1px solid #1a1a2e;
+            border: 1px solid #141428;
             font-weight: bold;
             font-size: 16px;
         }
@@ -705,6 +779,7 @@ void MainWindow::setupUI() {
 
     // Videos tab
     QWidget* videosTab = new QWidget();
+    videosTab->setStyleSheet("background: transparent;");
     QHBoxLayout* videosLayout = new QHBoxLayout(videosTab);
     videosLayout->setSpacing(0);
     videosLayout->setContentsMargins(0, 0, 0, 0);
@@ -714,21 +789,21 @@ void MainWindow::setupUI() {
     videoList->setFixedWidth(260);
     videoList->setStyleSheet(R"(
         QListWidget {
-            background: #0f3460;
+            background: #18183a;
             border: none;
             font-size: 18px;
             color: white;
         }
         QListWidget::item {
             padding: 18px 15px;
-            border-bottom: 1px solid #1a1a2e;
+            border-bottom: 1px solid #1e1e40;
         }
         QListWidget::item:selected {
             background: #00d4ff;
-            color: #1a1a2e;
+            color: #141428;
         }
         QListWidget::item:hover:!selected {
-            background: #16213e;
+            background: #21213e;
         }
     )");
 
@@ -762,7 +837,7 @@ void MainWindow::setupUI() {
     // "No video" placeholder
     videoUnavailableLabel = new QLabel("Select a video from the list", this);
     videoUnavailableLabel->setAlignment(Qt::AlignCenter);
-    videoUnavailableLabel->setStyleSheet("font-size: 20px; color: #aaa; background: #1a1a2e;");
+    videoUnavailableLabel->setStyleSheet("font-size: 20px; color: #aaa; background: transparent;");
 
     // Video container with overlay using StackAll
     videoContainer = new QWidget(this);
@@ -781,7 +856,7 @@ void MainWindow::setupUI() {
 
     // Controls bar lives below the video so QVideoWidget can't paint over it
     videoControlsBar = new QWidget();
-    videoControlsBar->setStyleSheet("background: #0d0d1a;");
+    videoControlsBar->setStyleSheet("background: #141428;");
     QVBoxLayout* controlsBarLayout = new QVBoxLayout(videoControlsBar);
     controlsBarLayout->setContentsMargins(15, 8, 15, 10);
     controlsBarLayout->setSpacing(6);
@@ -881,6 +956,7 @@ void MainWindow::setupUI() {
 
     // Support tab
     QWidget* supportTab = new QWidget();
+    supportTab->setStyleSheet("background: transparent;");
     QVBoxLayout* supportLayout = new QVBoxLayout(supportTab);
     supportLayout->setAlignment(Qt::AlignCenter);
     supportLayout->setSpacing(20);
@@ -956,8 +1032,8 @@ void MainWindow::setupUI() {
 
     QString spinBoxStyle = R"(
         QDoubleSpinBox {
-            background: #16213e;
-            border: 2px solid #0f3460;
+            background: #18183a;
+            border: 2px solid #2a2a52;
             border-radius: 6px;
             color: white;
             padding: 4px;
@@ -974,11 +1050,11 @@ void MainWindow::setupUI() {
 
     QString incDecBtnStyle = R"(
         QPushButton {
-            background: #0f3460;
+            background: #1e2044;
             color: #00d4ff;
             font-size: 24px;
             font-weight: bold;
-            border: 2px solid #0f3460;
+            border: 2px solid #2a2a52;
             border-radius: 6px;
             min-width: 36px;
             max-width: 36px;
@@ -986,7 +1062,7 @@ void MainWindow::setupUI() {
             padding: 0px;
         }
         QPushButton:pressed {
-            background: #1a1a2e;
+            background: #141428;
             border-color: #00d4ff;
         }
     )";
@@ -1065,7 +1141,7 @@ void MainWindow::setupUI() {
     QPushButton* saveThresholdsBtn = new QPushButton("Save", this);
     saveThresholdsBtn->setStyleSheet(R"(
         QPushButton {
-            background: #0f3460;
+            background: #1e2044;
             color: #00d4ff;
             font-size: 18px;
             font-weight: bold;
@@ -1074,7 +1150,7 @@ void MainWindow::setupUI() {
             border: 2px solid #00d4ff;
         }
         QPushButton:pressed {
-            background: #1a1a2e;
+            background: #141428;
         }
     )");
     connect(saveThresholdsBtn, &QPushButton::clicked, this, &MainWindow::onSaveThresholds);
