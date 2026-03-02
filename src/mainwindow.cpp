@@ -198,8 +198,8 @@ void MainWindow::setupUI() {
         QTabBar::tab:selected {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                 stop:0 #22224a, stop:1 #141428);
-            color: #00d4ff;
-            border-bottom: 2px solid #00d4ff;
+            color: white;
+            border-bottom: 2px solid white;
         }
         QTabBar::tab:hover:!selected {
             background: #1e1e40;
@@ -640,8 +640,8 @@ void MainWindow::setupUI() {
         QGroupBox {
             font-size: 20px;
             font-weight: bold;
-            color: #00d4ff;
-            border: 2px solid #00d4ff;
+            color: white;
+            border: 2px solid white;
             border-radius: 10px;
             margin-top: 20px;
             padding: 15px;
@@ -670,7 +670,7 @@ void MainWindow::setupUI() {
     )";
 
     QLabel* partLabel = new QLabel("Part Number:", this);
-    partLabel->setStyleSheet("font-size: 16px; color: #e0e0e0;");
+    partLabel->setStyleSheet("font-size: 16px; color: white;");
     orderLayout->addWidget(partLabel);
 
     orderPartNumber = new QLineEdit(this);
@@ -679,7 +679,7 @@ void MainWindow::setupUI() {
     orderLayout->addWidget(orderPartNumber);
 
     QLabel* nameLabel = new QLabel("Part Name:", this);
-    nameLabel->setStyleSheet("font-size: 16px; color: #e0e0e0;");
+    nameLabel->setStyleSheet("font-size: 16px; color: white;");
     orderLayout->addWidget(nameLabel);
 
     orderPartName = new QLineEdit(this);
@@ -688,7 +688,7 @@ void MainWindow::setupUI() {
     orderLayout->addWidget(orderPartName);
 
     QLabel* qtyLabel = new QLabel("Quantity:", this);
-    qtyLabel->setStyleSheet("font-size: 16px; color: #e0e0e0;");
+    qtyLabel->setStyleSheet("font-size: 16px; color: white;");
     orderLayout->addWidget(qtyLabel);
 
     orderQuantity = new QLineEdit(this);
@@ -700,7 +700,7 @@ void MainWindow::setupUI() {
     generateBtn->setStyleSheet(R"(
         QPushButton {
             background: #1e2044;
-            color: #00d4ff;
+            color: white;
             font-size: 18px;
             font-weight: bold;
             padding: 12px;
@@ -744,7 +744,7 @@ void MainWindow::setupUI() {
         }
         QHeaderView::section {
             background-color: #1e2044;
-            color: #00d4ff;
+            color: white;
             padding: 10px;
             border: 1px solid #141428;
             font-weight: bold;
@@ -760,7 +760,7 @@ void MainWindow::setupUI() {
 
     // --- Parts catalog ---
     QLabel* catalogLabel = new QLabel("Parts Catalog", this);
-    catalogLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #00d4ff; padding: 4px 0;");
+    catalogLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white; padding: 4px 0;");
     tableLayout->addWidget(catalogLabel);
 
     partsTable = new QTableWidget(this);
@@ -821,7 +821,7 @@ void MainWindow::setupUI() {
     orderHeaderLayout->setSpacing(10);
 
     QLabel* orderTableLabel = new QLabel("Current Order", this);
-    orderTableLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #00d4ff;");
+    orderTableLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white;");
     orderHeaderLayout->addWidget(orderTableLabel);
     orderHeaderLayout->addStretch();
 
