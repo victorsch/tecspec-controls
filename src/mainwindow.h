@@ -97,6 +97,7 @@ private:
 
     // Parts list components
     QTableWidget* partsTable;
+    QTableWidget* orderTable;
     QLineEdit* orderPartNumber;
     QLineEdit* orderPartName;
     QLineEdit* orderQuantity;

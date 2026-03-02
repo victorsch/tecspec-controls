@@ -696,7 +696,7 @@ void MainWindow::setupUI() {
     orderQuantity->setStyleSheet(inputStyle);
     orderLayout->addWidget(orderQuantity);
 
-    QPushButton* generateBtn = new QPushButton("Generate Order Form", this);
+    QPushButton* generateBtn = new QPushButton("Add to Order", this);
     generateBtn->setStyleSheet(R"(
         QPushButton {
             background: #1e2044;
@@ -729,10 +729,39 @@ void MainWindow::setupUI() {
 
     orderLayout->addStretch();
 
-    // Right column: Parts table
+    QString tableStyle = R"(
+        QTableWidget {
+            background-color: #141428;
+            alternate-background-color: #18183a;
+            gridline-color: #22224a;
+            font-size: 16px;
+        }
+        QTableWidget::item {
+            padding: 10px 8px;
+        }
+        QTableWidget::item:selected {
+            background-color: #1e2044;
+        }
+        QHeaderView::section {
+            background-color: #1e2044;
+            color: #00d4ff;
+            padding: 10px;
+            border: 1px solid #141428;
+            font-weight: bold;
+            font-size: 15px;
+        }
+    )";
+
+    // Right column: split into parts catalog (top) and current order (bottom)
     QWidget* tableContainer = new QWidget();
     QVBoxLayout* tableLayout = new QVBoxLayout(tableContainer);
-    tableLayout->setContentsMargins(0, 0, 0, 0);
+    tableLayout->setContentsMargins(0, 0, 0, 8);
+    tableLayout->setSpacing(6);
+
+    // --- Parts catalog ---
+    QLabel* catalogLabel = new QLabel("Parts Catalog", this);
+    catalogLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #00d4ff; padding: 4px 0;");
+    tableLayout->addWidget(catalogLabel);
 
     partsTable = new QTableWidget(this);
     partsTable->setColumnCount(3);
@@ -746,40 +775,15 @@ void MainWindow::setupUI() {
     partsTable->setSelectionMode(QAbstractItemView::SingleSelection);
     partsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     partsTable->setAlternatingRowColors(true);
-    partsTable->setStyleSheet(R"(
-        QTableWidget {
-            background-color: #141428;
-            alternate-background-color: #18183a;
-            gridline-color: #22224a;
-            font-size: 16px;
-        }
-        QTableWidget::item {
-            padding: 12px 8px;
-        }
-        QTableWidget::item:selected {
-            background-color: #1e2044;
-        }
-        QHeaderView::section {
-            background-color: #1e2044;
-            color: #00d4ff;
-            padding: 12px;
-            border: 1px solid #141428;
-            font-weight: bold;
-            font-size: 16px;
-        }
-    )");
+    partsTable->setStyleSheet(tableStyle);
 
-    // Load CSV data
     QFile csvFile("../parts_list.csv");
     if (csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream in(&csvFile);
         bool firstLine = true;
         while (!in.atEnd()) {
             QString line = in.readLine();
-            if (firstLine) {
-                firstLine = false;
-                continue;  // Skip header
-            }
+            if (firstLine) { firstLine = false; continue; }
             QStringList fields = line.split(',');
             if (fields.size() >= 5) {
                 int row = partsTable->rowCount();
@@ -793,28 +797,68 @@ void MainWindow::setupUI() {
                 auto* itemQty = new QTableWidgetItem(fields[4].trimmed());
                 itemQty->setTextAlignment(Qt::AlignCenter);
                 partsTable->setItem(row, 2, itemQty);
-                partsTable->setRowHeight(row, 48);
+                partsTable->setRowHeight(row, 44);
             }
         }
         csvFile.close();
     }
 
-    // Click row to fill order form, then deselect after brief highlight
     connect(partsTable, &QTableWidget::cellPressed, this, [this](int row, int) {
         partsTable->selectRow(row);
-        QTableWidgetItem* partItem = partsTable->item(row, 0);
-        QTableWidgetItem* nameItem = partsTable->item(row, 1);
-        QTableWidgetItem* qtyItem = partsTable->item(row, 2);
-        if (partItem) orderPartNumber->setText(partItem->text());
-        if (nameItem) orderPartName->setText(nameItem->text());
-        if (qtyItem) orderQuantity->setText(qtyItem->text());
-        QTimer::singleShot(150, this, [this]() {
-            partsTable->clearSelection();
-        });
+        if (auto* i = partsTable->item(row, 0)) orderPartNumber->setText(i->text());
+        if (auto* i = partsTable->item(row, 1)) orderPartName->setText(i->text());
+        if (auto* i = partsTable->item(row, 2)) orderQuantity->setText(i->text());
+        QTimer::singleShot(150, this, [this]() { partsTable->clearSelection(); });
     });
 
-    tableLayout->addWidget(partsTable);
     QScroller::grabGesture(partsTable->viewport(), QScroller::TouchGesture);
+    tableLayout->addWidget(partsTable, 3);
+
+    // --- Current order ---
+    QWidget* orderHeaderRow = new QWidget();
+    QHBoxLayout* orderHeaderLayout = new QHBoxLayout(orderHeaderRow);
+    orderHeaderLayout->setContentsMargins(0, 4, 0, 0);
+    orderHeaderLayout->setSpacing(10);
+
+    QLabel* orderTableLabel = new QLabel("Current Order", this);
+    orderTableLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: #00d4ff;");
+    orderHeaderLayout->addWidget(orderTableLabel);
+    orderHeaderLayout->addStretch();
+
+    QPushButton* clearOrderBtn = new QPushButton("Clear", this);
+    clearOrderBtn->setStyleSheet(R"(
+        QPushButton {
+            background: #1e2044; color: #ff6b6b;
+            font-size: 13px; font-weight: bold;
+            padding: 4px 12px; border-radius: 4px;
+            border: 1px solid #ff6b6b;
+        }
+        QPushButton:pressed { background: #141428; }
+    )");
+    orderHeaderLayout->addWidget(clearOrderBtn);
+    tableLayout->addWidget(orderHeaderRow);
+
+    orderTable = new QTableWidget(this);
+    orderTable->setColumnCount(3);
+    orderTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
+    orderTable->verticalHeader()->setVisible(false);
+    orderTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    orderTable->setColumnWidth(0, 240);
+    orderTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    orderTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    orderTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    orderTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    orderTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    orderTable->setAlternatingRowColors(true);
+    orderTable->setStyleSheet(tableStyle);
+    QScroller::grabGesture(orderTable->viewport(), QScroller::TouchGesture);
+    tableLayout->addWidget(orderTable, 2);
+
+    connect(clearOrderBtn, &QPushButton::clicked, this, [this]() {
+        orderTable->setRowCount(0);
+        orderQrLabel->clear();
+        orderQrHint->hide();
+    });
 
     partsColumnsLayout->addWidget(orderGroup, 1);
     partsColumnsLayout->addWidget(tableContainer, 2);
@@ -1597,35 +1641,52 @@ void MainWindow::onVideoSelected(QListWidgetItem* item) {
 
 void MainWindow::onGenerateOrder() {
     QString partNumber = orderPartNumber->text().trimmed();
-    QString partName = orderPartName->text().trimmed();
-    QString quantity = orderQuantity->text().trimmed();
+    QString partName   = orderPartName->text().trimmed();
+    QString quantity   = orderQuantity->text().trimmed();
 
     if (partNumber.isEmpty() || quantity.isEmpty()) return;
 
-    QString url = QString("https://www.srs-enterprises.com?part=%1&name=%2&qty=%3")
-        .arg(QUrl::toPercentEncoding(partNumber).constData())
-        .arg(QUrl::toPercentEncoding(partName).constData())
-        .arg(QUrl::toPercentEncoding(quantity).constData());
+    // Add row to order table
+    int row = orderTable->rowCount();
+    orderTable->insertRow(row);
+    auto makeCell = [](const QString& text) {
+        auto* cell = new QTableWidgetItem(text);
+        cell->setTextAlignment(Qt::AlignCenter);
+        return cell;
+    };
+    orderTable->setItem(row, 0, makeCell(partNumber));
+    orderTable->setItem(row, 1, makeCell(partName));
+    orderTable->setItem(row, 2, makeCell(quantity));
+    orderTable->setRowHeight(row, 44);
+
+    // Clear form
+    orderPartNumber->clear();
+    orderPartName->clear();
+    orderQuantity->clear();
+
+    // Build URL encoding all items in the order
+    QStringList items;
+    for (int i = 0; i < orderTable->rowCount(); i++) {
+        items << orderTable->item(i, 0)->text()
+               + "|" + orderTable->item(i, 1)->text()
+               + "|" + orderTable->item(i, 2)->text();
+    }
+    QString url = "https://www.srs-enterprises.com/order?items="
+                  + QString(QUrl::toPercentEncoding(items.join(",")));
 
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (!qr) return;
 
-    int scale = 6;
+    int scale = 5;
     int size = qr->width * scale;
     QImage qrImage(size, size, QImage::Format_RGB32);
     qrImage.fill(Qt::white);
-
-    for (int y = 0; y < qr->width; y++) {
-        for (int x = 0; x < qr->width; x++) {
-            if (qr->data[y * qr->width + x] & 1) {
-                for (int sy = 0; sy < scale; sy++) {
-                    for (int sx = 0; sx < scale; sx++) {
+    for (int y = 0; y < qr->width; y++)
+        for (int x = 0; x < qr->width; x++)
+            if (qr->data[y * qr->width + x] & 1)
+                for (int sy = 0; sy < scale; sy++)
+                    for (int sx = 0; sx < scale; sx++)
                         qrImage.setPixel(x * scale + sx, y * scale + sy, qRgb(0, 0, 0));
-                    }
-                }
-            }
-        }
-    }
     QRcode_free(qr);
 
     orderQrLabel->setPixmap(QPixmap::fromImage(qrImage));
