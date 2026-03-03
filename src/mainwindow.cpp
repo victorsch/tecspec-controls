@@ -127,15 +127,6 @@ void MainWindow::setupUI() {
         p.fillRect(m_bgPixmap.rect(), QColor(0x16, 0x16, 0x32));
 
 
-        // 3. Vignette: radial gradients from each corner so darkness hugs the edges
-        const int cr = (int)(qSqrt(double(W * W + H * H)) * 0.55);
-        const QList<QPoint> corners = {{0,0},{W,0},{0,H},{W,H}};
-        for (const QPoint& c : corners) {
-            QRadialGradient g(c, cr);
-            g.setColorAt(0.0, QColor(0, 0, 0, 140));
-            g.setColorAt(1.0, QColor(0, 0, 0,   0));
-            p.fillRect(m_bgPixmap.rect(), QBrush(g));
-        }
 
         // 4. Dense film grain — two passes so grain reads over both the dark
         //    and light areas, integrating with the bloom patches below
@@ -144,7 +135,8 @@ void MainWindow::setupUI() {
         std::uniform_int_distribution<int> ra(2, 22);
         std::uniform_int_distribution<int> rb(0, 2);   // 0=dark, 1-2=light
 
-        for (int i = 0; i < 35000; i++) {
+        const int grainCount = W * H / 30;  // ~1 dot per 30 pixels, scales with resolution
+        for (int i = 0; i < grainCount; i++) {
             int x = rx(rng), y = ry(rng), a = ra(rng);
             int kind = rb(rng);
             if (kind == 0)
