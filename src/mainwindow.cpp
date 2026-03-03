@@ -135,14 +135,6 @@ void MainWindow::setupUI() {
         std::uniform_int_distribution<int> ra(2, 22);
         std::uniform_int_distribution<int> rb(0, 2);   // 0=dark, 1-2=light
 
-        // 3. Vignette: transparent centre → near-black corners
-        double halfDiag = qSqrt(double(W * W + H * H)) / 2.0;
-        QRadialGradient vignette(W * 0.5, H * 0.5, halfDiag);
-        vignette.setColorAt(0.0,  QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.40, QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.70, QColor(0, 0, 0,  85));
-        vignette.setColorAt(1.0,  QColor(0, 0, 0, 185));
-        p.fillRect(m_bgPixmap.rect(), vignette);
 
         const int grainCount = W * H / 30;  // ~1 dot per 30 pixels, scales with resolution
         for (int i = 0; i < grainCount; i++) {
