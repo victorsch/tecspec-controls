@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include <limits>
 #include "sensor_manager.h"
 #include "alarm_manager.h"
 #include "bacnet_interface.h"
@@ -449,70 +450,159 @@ void MainWindow::setupUI() {
     // Graphs tab
     QWidget* graphsTab = new QWidget();
     graphsTab->setStyleSheet("background: transparent;");
-    QVBoxLayout* graphsLayout = new QVBoxLayout(graphsTab);
+    QHBoxLayout* graphsMainLayout = new QHBoxLayout(graphsTab);
+    graphsMainLayout->setContentsMargins(10, 10, 10, 10);
+    graphsMainLayout->setSpacing(12);
 
-    // Sensor selector dropdown
+    // === LEFT PANEL: sensor checkboxes + time range ===
+    QWidget* leftPanel = new QWidget();
+    leftPanel->setFixedWidth(230);
+    leftPanel->setStyleSheet("background: rgba(20, 20, 40, 0.75); border-radius: 8px;");
+    QVBoxLayout* leftLayout = new QVBoxLayout(leftPanel);
+    leftLayout->setContentsMargins(12, 14, 12, 14);
+    leftLayout->setSpacing(8);
+
+    QLabel* sensorsHeader = new QLabel("SENSORS");
+    sensorsHeader->setStyleSheet(
+        "color: #a0a0c0; font-size: 13px; font-weight: bold; letter-spacing: 2px;"
+        " padding-bottom: 6px; border-bottom: 1px solid #2a2a52;");
+    leftLayout->addWidget(sensorsHeader);
+
+    // Scroll area for checkboxes
+    QScrollArea* cbScroll = new QScrollArea();
+    cbScroll->setWidgetResizable(true);
+    cbScroll->setStyleSheet(
+        "QScrollArea { background: transparent; border: none; }"
+        "QScrollBar:vertical { width: 6px; background: #18183a; }"
+        "QScrollBar::handle:vertical { background: #2a2a52; border-radius: 3px; }");
+    QWidget* cbContainer = new QWidget();
+    cbContainer->setStyleSheet("background: transparent;");
+    QVBoxLayout* cbLayout = new QVBoxLayout(cbContainer);
+    cbLayout->setContentsMargins(0, 4, 0, 4);
+    cbLayout->setSpacing(6);
+
+    static const std::vector<QColor> kSeriesColors = {
+        QColor("#00d4ff"), QColor("#ff6b6b"), QColor("#51cf66"), QColor("#ffd43b"),
+        QColor("#cc5de8"), QColor("#ff922b"), QColor("#74c0fc"), QColor("#f06595"),
+    };
+
+    int colorIdx = 0;
+    auto makeCheckboxStyle = [](const QColor& c) -> QString {
+        return QString(
+            "QCheckBox { color: white; font-size: 15px; spacing: 8px; padding: 4px 2px; }"
+            "QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px;"
+            "  border: 2px solid %1; }"
+            "QCheckBox::indicator:checked { background-color: %1; }"
+            "QCheckBox::indicator:unchecked { background-color: transparent; }"
+        ).arg(c.name());
+    };
+
+    // One checkbox per sensor
+    for (const auto& sensor : sensorConfigs) {
+        QColor color = kSeriesColors[colorIdx % kSeriesColors.size()];
+        colorIdx++;
+
+        QCheckBox* cb = new QCheckBox(QString::fromStdString(sensor.name));
+        cb->setStyleSheet(makeCheckboxStyle(color));
+        sensorCheckBoxes[sensor.id] = cb;
+
+        QLineSeries* series = new QLineSeries(this);
+        series->setColor(color);
+        series->setPen(QPen(color, 2));
+        series->setName(QString::fromStdString(sensor.name));
+        chartSeriesMap[sensor.id] = series;
+
+        cbLayout->addWidget(cb);
+
+        connect(cb, &QCheckBox::toggled, this, [this, id = sensor.id](bool checked) {
+            QLineSeries* s = chartSeriesMap[id];
+            QChart* ch = chartView->chart();
+            if (checked) {
+                ch->addSeries(s);
+                s->attachAxis(axisX);
+                s->attachAxis(axisY);
+            } else {
+                ch->removeSeries(s);
+                s->setParent(this);
+            }
+            updateChart();
+            updateLegend();
+        });
+    }
+
+    // BTUs checkbox
+    {
+        QColor color = kSeriesColors[colorIdx % kSeriesColors.size()];
+        QCheckBox* cb = new QCheckBox("BTUs");
+        cb->setStyleSheet(makeCheckboxStyle(color));
+        sensorCheckBoxes["btus"] = cb;
+
+        QLineSeries* series = new QLineSeries(this);
+        series->setColor(color);
+        series->setPen(QPen(color, 2));
+        series->setName("BTUs");
+        chartSeriesMap["btus"] = series;
+
+        cbLayout->addWidget(cb);
+
+        connect(cb, &QCheckBox::toggled, this, [this](bool checked) {
+            QLineSeries* s = chartSeriesMap["btus"];
+            QChart* ch = chartView->chart();
+            if (checked) {
+                ch->addSeries(s);
+                s->attachAxis(axisX);
+                s->attachAxis(axisY);
+            } else {
+                ch->removeSeries(s);
+                s->setParent(this);
+            }
+            updateChart();
+            updateLegend();
+        });
+    }
+
+    cbLayout->addStretch();
+    cbScroll->setWidget(cbContainer);
+    leftLayout->addWidget(cbScroll, 1);
+
+
+    // Time range section
+    QLabel* timeHeader = new QLabel("TIME RANGE");
+    timeHeader->setStyleSheet(
+        "color: #a0a0c0; font-size: 13px; font-weight: bold; letter-spacing: 2px;"
+        " padding-top: 8px; border-top: 1px solid #2a2a52; margin-top: 4px;");
+    leftLayout->addWidget(timeHeader);
+
     QString comboStyle = R"(
         QComboBox {
-            font-size: 18px;
-            padding: 10px 15px;
+            font-size: 16px;
+            padding: 8px 10px;
             min-height: 30px;
             background: #18183a;
             color: white;
             border: 2px solid #2a2a52;
             border-radius: 6px;
         }
-        QComboBox::drop-down {
-            width: 40px;
-        }
+        QComboBox::drop-down { width: 30px; }
         QComboBox QAbstractItemView {
-            font-size: 28px;
+            font-size: 20px;
             background: #18183a;
             color: white;
             outline: none;
         }
         QComboBox QAbstractItemView::item {
-            min-height: 60px;
-            padding: 18px 15px;
-            border-bottom: 2px solid #2a2a52;
+            min-height: 50px;
+            padding: 10px 8px;
+            border-bottom: 1px solid #2a2a52;
         }
         QComboBox QAbstractItemView::item:selected {
-            background-color: #00d4ff;
-            color: #141428;
+            background-color: #2a2a52;
+            color: white;
         }
         QComboBox QAbstractItemView::item:hover {
             background-color: #21213e;
         }
     )";
-
-    QHBoxLayout* selectorLayout = new QHBoxLayout();
-    QLabel* selectorLabel = new QLabel("Select Sensor:", this);
-    selectorLabel->setStyleSheet("font-size: 18px;");
-    selectorLayout->addWidget(selectorLabel);
-
-    sensorComboBox = new QComboBox(this);
-    sensorComboBox->setStyleSheet(comboStyle);
-    for (const auto& sensor : sensorConfigs) {
-        sensorComboBox->addItem(QString::fromStdString(sensor.name),
-                                QString::fromStdString(sensor.id));
-    }
-    // BTUs
-    sensorComboBox->addItem(QString::fromStdString("BTUs"), QString::fromStdString("btus"));
-
-    connect(sensorComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onSensorSelected);
-    selectorLayout->addWidget(sensorComboBox);
-
-    // Set item heights programmatically for sensor combo
-    for (int i = 0; i < sensorComboBox->count(); i++) {
-        sensorComboBox->setItemData(i, QSize(0, 65), Qt::SizeHintRole);
-    }
-
-    selectorLayout->addSpacing(20);
-
-    QLabel* timeLabel = new QLabel("Time Range:", this);
-    timeLabel->setStyleSheet("font-size: 18px;");
-    selectorLayout->addWidget(timeLabel);
 
     timeRangeComboBox = new QComboBox(this);
     timeRangeComboBox->setStyleSheet(comboStyle);
@@ -520,33 +610,27 @@ void MainWindow::setupUI() {
     timeRangeComboBox->addItem("1 minute", 60);
     timeRangeComboBox->addItem("2 minutes", 120);
     timeRangeComboBox->addItem("5 minutes", 300);
-    timeRangeComboBox->setCurrentIndex(1);  // Default to 1 minute
+    timeRangeComboBox->setCurrentIndex(1);
     selectedTimeRange = 60;
     connect(timeRangeComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onTimeRangeSelected);
-    selectorLayout->addWidget(timeRangeComboBox);
+    leftLayout->addWidget(timeRangeComboBox);
 
-    // Set item heights programmatically for time combo
-    for (int i = 0; i < timeRangeComboBox->count(); i++) {
-        timeRangeComboBox->setItemData(i, QSize(0, 65), Qt::SizeHintRole);
-    }
+    graphsMainLayout->addWidget(leftPanel);
 
-    selectorLayout->addStretch();
-    graphsLayout->addLayout(selectorLayout);
+    // === RIGHT PANEL: chart + legend ===
+    QVBoxLayout* rightLayout = new QVBoxLayout();
+    rightLayout->setSpacing(0);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Create chart
-    chartSeries = new QLineSeries();
-    chartSeries->setColor(QColor("#00d4ff"));
+    // Chart (no series yet — added dynamically by checkboxes)
     QChart* chart = new QChart();
-    chart->addSeries(chartSeries);
-    chart->setTitle(sensorComboBox->currentText());
-    chart->setTitleBrush(QBrush(QColor("#00d4ff")));
     chart->legend()->hide();
     chart->setBackgroundBrush(QBrush(QColor("#141428")));
     chart->setPlotAreaBackgroundBrush(QBrush(QColor("#18183a")));
     chart->setPlotAreaBackgroundVisible(true);
+    chart->setMargins(QMargins(10, 10, 10, 10));
 
-    // Create axes
     axisX = new QValueAxis();
     axisX->setTitleText("Time (seconds)");
     axisX->setRange(0, 60);
@@ -556,25 +640,40 @@ void MainWindow::setupUI() {
     axisX->setLinePenColor(QColor("#2a2a52"));
     axisX->setGridLinePen(QPen(QColor("#22224a"), 1));
     chart->addAxis(axisX, Qt::AlignBottom);
-    chartSeries->attachAxis(axisX);
 
     axisY = new QValueAxis();
     axisY->setTitleText("Value");
+    axisY->setRange(50, 210);
     axisY->setTitleBrush(QBrush(QColor("#a0a0b0")));
     axisY->setLabelsBrush(QBrush(QColor("#a0a0b0")));
     axisY->setLinePenColor(QColor("#2a2a52"));
     axisY->setGridLinePen(QPen(QColor("#22224a"), 1));
     chart->addAxis(axisY, Qt::AlignLeft);
-    chartSeries->attachAxis(axisY);
 
     chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chartView->setStyleSheet("background: #141428; border: none;");
-    graphsLayout->addWidget(chartView);
+    rightLayout->addWidget(chartView, 1);
 
-    // Initialize with first sensor
-    if (!sensorConfigs.empty()) {
-        selectedSensorId = sensorConfigs[0].id;
+    // Legend widget at the bottom
+    legendWidget = new QWidget();
+    legendWidget->setFixedHeight(48);
+    legendWidget->setStyleSheet(
+        "background: rgba(20, 20, 40, 0.85); border-top: 1px solid #2a2a52;");
+    QHBoxLayout* legendLayout = new QHBoxLayout(legendWidget);
+    legendLayout->setContentsMargins(14, 8, 14, 8);
+    legendLayout->setSpacing(20);
+    QLabel* legendEmpty = new QLabel("Select sensors to display");
+    legendEmpty->setStyleSheet("color: #606080; font-size: 14px;");
+    legendLayout->addWidget(legendEmpty);
+    legendLayout->addStretch();
+    rightLayout->addWidget(legendWidget);
+
+    graphsMainLayout->addLayout(rightLayout, 1);
+
+    // Default: check all sensor checkboxes (except BTUs) — done after chart/axes/legend are ready
+    for (const auto& sensor : sensorConfigs) {
+        sensorCheckBoxes[sensor.id]->setChecked(true);
     }
 
     tabWidget->addTab(graphsTab, "Graphs");
@@ -1464,14 +1563,6 @@ void MainWindow::onResetAlarms() {
     updateDisplay();
 }
 
-void MainWindow::onSensorSelected(int index) {
-    if (index >= 0) {
-        selectedSensorId = sensorComboBox->itemData(index).toString().toStdString();
-        chartView->chart()->setTitle(sensorComboBox->currentText());
-        updateChart();
-    }
-}
-
 void MainWindow::onTimeRangeSelected(int index) {
     if (index >= 0) {
         selectedTimeRange = timeRangeComboBox->itemData(index).toInt();
@@ -1551,38 +1642,73 @@ void MainWindow::onDiagnoseClicked() {
 }
 
 void MainWindow::updateChart() {
-    if (selectedSensorId.empty()) return;
+    float globalMin = std::numeric_limits<float>::max();
+    float globalMax = std::numeric_limits<float>::lowest();
+    bool hasData = false;
+    const auto& activeSeries = chartView->chart()->series();
 
-    const auto& history = sensorManager.getHistory(selectedSensorId);
-    chartSeries->clear();
+    for (auto& [id, series] : chartSeriesMap) {
+        if (!activeSeries.contains(series)) continue;
 
-    if (history.empty()) return;
+        const auto& history = sensorManager.getHistory(id);
+        series->clear();
+        if (history.empty()) continue;
 
-    // Determine how many points to show based on selected time range
-    size_t pointsToShow = std::min(static_cast<size_t>(selectedTimeRange), history.size());
-    size_t startIdx = history.size() - pointsToShow;
+        size_t pointsToShow = std::min(static_cast<size_t>(selectedTimeRange), history.size());
+        size_t startIdx = history.size() - pointsToShow;
 
-    // Find min/max for Y axis
-    float minVal = history[startIdx];
-    float maxVal = history[startIdx];
-
-    for (size_t i = startIdx; i < history.size(); i++) {
-        float value = history[i];
-        // X axis: 0 = oldest visible, pointsToShow-1 = newest
-        int xPos = static_cast<int>(i - startIdx);
-        chartSeries->append(xPos, value);
-
-        if (value < minVal) minVal = value;
-        if (value > maxVal) maxVal = value;
+        for (size_t i = startIdx; i < history.size(); i++) {
+            float value = history[i];
+            series->append(static_cast<int>(i - startIdx), value);
+            if (value < globalMin) globalMin = value;
+            if (value > globalMax) globalMax = value;
+            hasData = true;
+        }
     }
 
-    // Add some padding to Y axis
-    float padding = (maxVal - minVal) * 0.1f;
-    if (padding < 1.0f) padding = 1.0f;
-    axisY->setRange(minVal - padding, maxVal + padding);
+    if (hasData) {
+        axisY->setRange(globalMin - 10.0, globalMax + 10.0);
+    }
+    axisX->setRange(0, selectedTimeRange - 1);
+}
 
-    // Set X axis range to match visible data
-    axisX->setRange(0, static_cast<int>(pointsToShow - 1));
+void MainWindow::updateLegend() {
+    QHBoxLayout* layout = qobject_cast<QHBoxLayout*>(legendWidget->layout());
+    if (!layout) return;
+
+    // Remove all existing items
+    while (QLayoutItem* item = layout->takeAt(0)) {
+        if (QWidget* w = item->widget()) w->deleteLater();
+        delete item;
+    }
+
+    bool anyChecked = false;
+    for (auto& [id, cb] : sensorCheckBoxes) {
+        if (!cb->isChecked()) continue;
+        anyChecked = true;
+
+        QLineSeries* series = chartSeriesMap[id];
+
+        QLabel* swatch = new QLabel(legendWidget);
+        swatch->setFixedSize(14, 14);
+        swatch->setStyleSheet(QString("background-color: %1; border-radius: 3px;")
+                                  .arg(series->color().name()));
+        layout->addWidget(swatch, 0, Qt::AlignVCenter);
+
+        QLabel* nameLabel = new QLabel(series->name(), legendWidget);
+        nameLabel->setStyleSheet("color: white; font-size: 14px; background: transparent;");
+        layout->addWidget(nameLabel, 0, Qt::AlignVCenter);
+
+        layout->addSpacing(16);
+    }
+
+    if (!anyChecked) {
+        QLabel* empty = new QLabel("Select sensors to display", legendWidget);
+        empty->setStyleSheet("color: #606080; font-size: 14px; background: transparent;");
+        layout->addWidget(empty);
+    }
+
+    layout->addStretch();
 }
 
 bool MainWindow::event(QEvent* event) {

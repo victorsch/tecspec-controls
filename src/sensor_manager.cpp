@@ -15,8 +15,8 @@ void SensorManager::initializeBaseValues() {
     baseValues["outlet_temp_hot"] = 113.0f;     // °F
     baseValues["inlet_temp_cold"] = 59.0f;      // °F
     baseValues["outlet_temp_cold"] = 95.0f;     // °F
-    baseValues["flow_rate_hot"] = 26.4f;        // GPM
-    baseValues["flow_rate_cold"] = 26.4f;       // GPM
+    baseValues["flow_rate_hot"] = 200.0f;       // GPM
+    baseValues["flow_rate_cold"] = 200.0f;      // GPM
     baseValues["pressure_hot_inlet"] = 58.0f;    // psi
     baseValues["pressure_hot_outlet"] = 54.0f;  // psi
     baseValues["pressure_cold_inlet"] = 50.8f;  // psi
