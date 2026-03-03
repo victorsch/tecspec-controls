@@ -7,6 +7,7 @@
 
 #include <QApplication>
 #include <QScreen>
+#include <QRegularExpression>
 #include <QCursor>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -419,9 +420,9 @@ void MainWindow::setupUI() {
     hotLayout->addStretch();
     coldLayout->addStretch();
 
-    columnsLayout->addWidget(hotGroup, 1);
-    columnsLayout->addWidget(imageLabel, 0);
     columnsLayout->addWidget(coldGroup, 1);
+    columnsLayout->addWidget(imageLabel, 0);
+    columnsLayout->addWidget(hotGroup, 1);
 
     monitoringLayout->addWidget(title);
     monitoringLayout->addLayout(statusLayout);
@@ -509,21 +510,20 @@ void MainWindow::setupUI() {
                 s->setParent(this);
             }
             updateChart();
-            updateLegend();
         });
     }
 
     // BTUs checkbox
     {
-        QColor color = kSeriesColors[colorIdx % kSeriesColors.size()];
-        QCheckBox* cb = new QCheckBox("BTUs");
+        QColor color = kSeriesColors[colorIdx++ % kSeriesColors.size()];
+        QCheckBox* cb = new QCheckBox("BTUs (millions)");
         cb->setStyleSheet(makeCheckboxStyle(color));
         sensorCheckBoxes["btus"] = cb;
 
         QLineSeries* series = new QLineSeries(this);
         series->setColor(color);
         series->setPen(QPen(color, 2));
-        series->setName("BTUs");
+        series->setName("BTUs (millions)");
         chartSeriesMap["btus"] = series;
 
         cbLayout->addWidget(cb);
@@ -540,7 +540,66 @@ void MainWindow::setupUI() {
                 s->setParent(this);
             }
             updateChart();
-            updateLegend();
+        });
+    }
+
+    // Hot side pressure differential checkbox
+    {
+        QColor color = kSeriesColors[colorIdx++ % kSeriesColors.size()];
+        QCheckBox* cb = new QCheckBox("Hot Pressure Diff");
+        cb->setStyleSheet(makeCheckboxStyle(color));
+        sensorCheckBoxes["pressure_diff_hot"] = cb;
+
+        QLineSeries* series = new QLineSeries(this);
+        series->setColor(color);
+        series->setPen(QPen(color, 2));
+        series->setName("Hot Pressure Diff");
+        chartSeriesMap["pressure_diff_hot"] = series;
+
+        cbLayout->addWidget(cb);
+
+        connect(cb, &QCheckBox::toggled, this, [this](bool checked) {
+            QLineSeries* s = chartSeriesMap["pressure_diff_hot"];
+            QChart* ch = chartView->chart();
+            if (checked) {
+                ch->addSeries(s);
+                s->attachAxis(axisX);
+                s->attachAxis(axisY);
+            } else {
+                ch->removeSeries(s);
+                s->setParent(this);
+            }
+            updateChart();
+        });
+    }
+
+    // Cold side pressure differential checkbox
+    {
+        QColor color = kSeriesColors[colorIdx++ % kSeriesColors.size()];
+        QCheckBox* cb = new QCheckBox("Cold Pressure Diff");
+        cb->setStyleSheet(makeCheckboxStyle(color));
+        sensorCheckBoxes["pressure_diff_cold"] = cb;
+
+        QLineSeries* series = new QLineSeries(this);
+        series->setColor(color);
+        series->setPen(QPen(color, 2));
+        series->setName("Cold Pressure Diff");
+        chartSeriesMap["pressure_diff_cold"] = series;
+
+        cbLayout->addWidget(cb);
+
+        connect(cb, &QCheckBox::toggled, this, [this](bool checked) {
+            QLineSeries* s = chartSeriesMap["pressure_diff_cold"];
+            QChart* ch = chartView->chart();
+            if (checked) {
+                ch->addSeries(s);
+                s->attachAxis(axisX);
+                s->attachAxis(axisY);
+            } else {
+                ch->removeSeries(s);
+                s->setParent(this);
+            }
+            updateChart();
         });
     }
 
@@ -631,6 +690,9 @@ void MainWindow::setupUI() {
     axisY->setLabelsBrush(QBrush(QColor("#a0a0b0")));
     axisY->setLinePenColor(QColor("#2a2a52"));
     axisY->setGridLinePen(QPen(QColor("#22224a"), 1));
+    axisY->setTickType(QValueAxis::TicksDynamic);
+    axisY->setTickAnchor(0.0);
+    axisY->setTickInterval(20.0);
     chart->addAxis(axisY, Qt::AlignLeft);
 
     chartView = new QChartView(chart);
@@ -638,19 +700,6 @@ void MainWindow::setupUI() {
     chartView->setStyleSheet("background: #141428; border: none;");
     rightLayout->addWidget(chartView, 1);
 
-    // Legend widget at the bottom
-    legendWidget = new QWidget();
-    legendWidget->setFixedHeight(48);
-    legendWidget->setStyleSheet(
-        "background: rgba(20, 20, 40, 0.85); border-top: 1px solid #2a2a52;");
-    QHBoxLayout* legendLayout = new QHBoxLayout(legendWidget);
-    legendLayout->setContentsMargins(14, 8, 14, 8);
-    legendLayout->setSpacing(20);
-    QLabel* legendEmpty = new QLabel("Select sensors to display");
-    legendEmpty->setStyleSheet("color: #606080; font-size: 14px;");
-    legendLayout->addWidget(legendEmpty);
-    legendLayout->addStretch();
-    rightLayout->addWidget(legendWidget);
 
     graphsMainLayout->addLayout(rightLayout, 1);
 
@@ -1493,8 +1542,9 @@ void MainWindow::updateDisplay() {
     for (const auto& sensor : sensorConfigs) {
         if (sensorLabels.count(sensor.id)) {
             float value = values[sensor.id];
-            QString text = QString::fromStdString(sensor.name) +
-                          QString(": %1 ").arg(value, 0, 'f', 1) +
+            QString name = QString::fromStdString(sensor.name);
+            name.remove(QRegularExpression("^(Hot Side |Cold Side |Hot |Cold )"));
+            QString text = name + QString(": %1 ").arg(value, 0, 'f', 1) +
                           QString::fromStdString(sensor.unit);
 
             // Color based on alarm state
@@ -1641,6 +1691,7 @@ void MainWindow::updateChart() {
 
         for (size_t i = startIdx; i < history.size(); i++) {
             float value = history[i];
+            if (id == "btus") value /= 1000000.0f;
             series->append(static_cast<int>(i - startIdx), value);
             if (value < globalMin) globalMin = value;
             if (value > globalMax) globalMax = value;
@@ -1649,49 +1700,11 @@ void MainWindow::updateChart() {
     }
 
     if (hasData) {
-        axisY->setRange(globalMin - 10.0, globalMax + 10.0);
+        axisY->setRange(std::min(globalMin - 10.0f, 0.0f), std::max(globalMax + 10.0f, 0.0f));
     }
     axisX->setRange(0, selectedTimeRange - 1);
 }
 
-void MainWindow::updateLegend() {
-    QHBoxLayout* layout = qobject_cast<QHBoxLayout*>(legendWidget->layout());
-    if (!layout) return;
-
-    // Remove all existing items
-    while (QLayoutItem* item = layout->takeAt(0)) {
-        if (QWidget* w = item->widget()) w->deleteLater();
-        delete item;
-    }
-
-    bool anyChecked = false;
-    for (auto& [id, cb] : sensorCheckBoxes) {
-        if (!cb->isChecked()) continue;
-        anyChecked = true;
-
-        QLineSeries* series = chartSeriesMap[id];
-
-        QLabel* swatch = new QLabel(legendWidget);
-        swatch->setFixedSize(14, 14);
-        swatch->setStyleSheet(QString("background-color: %1; border-radius: 3px;")
-                                  .arg(series->color().name()));
-        layout->addWidget(swatch, 0, Qt::AlignVCenter);
-
-        QLabel* nameLabel = new QLabel(series->name(), legendWidget);
-        nameLabel->setStyleSheet("color: white; font-size: 14px; background: transparent;");
-        layout->addWidget(nameLabel, 0, Qt::AlignVCenter);
-
-        layout->addSpacing(16);
-    }
-
-    if (!anyChecked) {
-        QLabel* empty = new QLabel("Select sensors to display", legendWidget);
-        empty->setStyleSheet("color: #606080; font-size: 14px; background: transparent;");
-        layout->addWidget(empty);
-    }
-
-    layout->addStretch();
-}
 
 bool MainWindow::event(QEvent* event) {
     if (event->type() == QEvent::Gesture) {

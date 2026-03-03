@@ -59,7 +59,6 @@ private:
     void setupUI();
     void updateDisplay();
     void updateChart();
-    void updateLegend();
 
     SensorManager& sensorManager;
     AlarmManager& alarmManager;
@@ -85,7 +84,6 @@ private:
     int selectedTimeRange;  // seconds
     std::map<std::string, QCheckBox*> sensorCheckBoxes;
     std::map<std::string, QLineSeries*> chartSeriesMap;
-    QWidget* legendWidget;
 
     // PDF viewer components
     QGraphicsView* pdfView;

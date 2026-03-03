@@ -66,13 +66,23 @@ void SensorManager::updateCalculatedValues() {
 
     float btus = gpm * 500.0f * deltaT;
     values["btus"] = btus;
-
-    // Store in history
     auto& hist = history["btus"];
     hist.push_back(btus);
-    if (hist.size() > MAX_HISTORY) {
-        hist.pop_front();
-    }
+    if (hist.size() > MAX_HISTORY) hist.pop_front();
+
+    // Hot side pressure differential
+    float hotDiff = getValue("pressure_hot_inlet") - getValue("pressure_hot_outlet");
+    values["pressure_diff_hot"] = hotDiff;
+    auto& histHD = history["pressure_diff_hot"];
+    histHD.push_back(hotDiff);
+    if (histHD.size() > MAX_HISTORY) histHD.pop_front();
+
+    // Cold side pressure differential
+    float coldDiff = getValue("pressure_cold_inlet") - getValue("pressure_cold_outlet");
+    values["pressure_diff_cold"] = coldDiff;
+    auto& histCD = history["pressure_diff_cold"];
+    histCD.push_back(coldDiff);
+    if (histCD.size() > MAX_HISTORY) histCD.pop_front();
 }
 
 float SensorManager::getValue(const std::string& sensorId) const {
