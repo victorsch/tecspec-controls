@@ -142,14 +142,19 @@ void MainWindow::setupUI() {
             p.fillRect(cx - r, cy - r, r * 2, r * 2, QBrush(bloom));
         }
 
-        // 3. Vignette: transparent centre → near-black corners
-        double halfDiag = qSqrt(double(W * W + H * H)) / 2.0;
-        QRadialGradient vignette(W * 0.5, H * 0.5, halfDiag);
-        vignette.setColorAt(0.0,  QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.40, QColor(0, 0, 0,   0));
-        vignette.setColorAt(0.70, QColor(0, 0, 0,  85));
-        vignette.setColorAt(1.0,  QColor(0, 0, 0, 185));
-        p.fillRect(m_bgPixmap.rect(), vignette);
+        // 3. Vignette: 4 edge linear gradients fading inward (no circular artefact)
+        const int vx = W / 4, vy = H / 4;
+        const QColor vDark(0, 0, 0, 160), vClear(0, 0, 0, 0);
+        auto edgeGrad = [&](QPointF from, QPointF to) {
+            QLinearGradient g(from, to);
+            g.setColorAt(0.0, vDark);
+            g.setColorAt(1.0, vClear);
+            return g;
+        };
+        p.fillRect(0,      0, vx,     H, edgeGrad({0,0},   {(qreal)vx, 0}));       // left
+        p.fillRect(W - vx, 0, vx,     H, edgeGrad({(qreal)W, 0}, {(qreal)(W-vx), 0})); // right
+        p.fillRect(0,      0, W,     vy, edgeGrad({0,0},   {0, (qreal)vy}));        // top
+        p.fillRect(0, H - vy, W,     vy, edgeGrad({0,(qreal)H}, {0, (qreal)(H-vy)}));  // bottom
 
         // 4. Dense film grain — two passes so grain reads over both the dark
         //    and light areas, integrating with the bloom patches below
