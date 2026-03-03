@@ -6,6 +6,7 @@
 #include "config.h"
 
 #include <QApplication>
+#include <QScreen>
 #include <QCursor>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -112,7 +113,9 @@ void MainWindow::setupUI() {
     const auto& displayConfig = Config::instance().getDisplayConfig();
 
     // Pre-generate background: flat navy base + soft bloom patches + vignette + dense grain
-    const int W = displayConfig.width, H = displayConfig.height;
+    // Use actual screen size so the pixmap is always 1:1 (no stretching)
+    const QRect screenRect = QGuiApplication::primaryScreen()->geometry();
+    const int W = screenRect.width(), H = screenRect.height();
     m_bgPixmap = QPixmap(W, H);
     {
         QPainter p(&m_bgPixmap);
@@ -994,10 +997,11 @@ void MainWindow::setupUI() {
         }
     )");
 
+    const QString videoDir = QCoreApplication::applicationDirPath();
     struct VideoEntry { QString title; QString file; };
     const QList<VideoEntry> videos = {
         { "How it Works",          "" },
-        { "Exploded Parts View",   "../exploded.mp4" },
+        { "Exploded Parts View",   videoDir + "/exploded.mp4" },
         { "Opening Heat Exchanger","" },
         { "Cleaning",              "" },
         { "Changing Gaskets",      "" },
@@ -1132,6 +1136,13 @@ void MainWindow::setupUI() {
 
     connect(videoPlayer, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
         videoPauseButton->setText(state == QMediaPlayer::PlayingState ? "⏸" : "▶");
+    });
+    connect(videoPlayer, &QMediaPlayer::errorOccurred, this,
+            [this](QMediaPlayer::Error, const QString& errorString) {
+        videoContainer->hide();
+        videoControlsBar->hide();
+        videoUnavailableLabel->setText("Playback error: " + errorString);
+        videoUnavailableLabel->show();
     });
 
     videosLayout->addWidget(videoList);
