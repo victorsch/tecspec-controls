@@ -126,21 +126,6 @@ void MainWindow::setupUI() {
         // 1. Flat dark-navy base
         p.fillRect(m_bgPixmap.rect(), QColor(0x16, 0x16, 0x32));
 
-        // 2. Soft organic bloom patches — these are what grain "brightens up"
-        //    Scattered across the centre two-thirds of the screen
-        struct Bloom { int cx, cy, r, a; };
-        std::uniform_int_distribution<int> bx(W / 5,     4 * W / 5);
-        std::uniform_int_distribution<int> by(H / 5,     4 * H / 5);
-        std::uniform_int_distribution<int> br(W / 8,     W / 3);
-        std::uniform_int_distribution<int> ba(14, 38);
-        for (int i = 0; i < 7; i++) {
-            int cx = bx(rng), cy = by(rng), r = br(rng), a = ba(rng);
-            QRadialGradient bloom(cx, cy, r);
-            bloom.setColorAt(0.0, QColor(155, 165, 215, a));
-            bloom.setColorAt(0.5, QColor(130, 140, 200, a / 3));
-            bloom.setColorAt(1.0, QColor(100, 110, 180, 0));
-            p.fillRect(cx - r, cy - r, r * 2, r * 2, QBrush(bloom));
-        }
 
         // 3. Vignette: 4 edge linear gradients fading inward (no circular artefact)
         const int vx = W / 4, vy = H / 4;
