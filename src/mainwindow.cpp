@@ -423,6 +423,7 @@ void MainWindow::setupUI() {
     for (const auto& sensor : sensorConfigs) {
         QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
         label->setStyleSheet("font-size: 22px; padding: 5px;");
+        label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         sensorLabels[sensor.id] = label;
 
         // Route to appropriate side
@@ -1509,15 +1510,6 @@ void MainWindow::updateDisplay() {
             // Color based on alarm state
             bool inAlarm = alarmManager.isAlarmActive(sensor.id, "HIGH") ||
                            alarmManager.isAlarmActive(sensor.id, "LOW");
-
-            // Add alarm range if in alarm
-            if (inAlarm) {
-                float lowThreshold = alarmManager.getLowThreshold(sensor.id);
-                float highThreshold = alarmManager.getHighThreshold(sensor.id);
-                text += QString(" (Range: %1 - %2)")
-                        .arg(lowThreshold, 0, 'f', 1)
-                        .arg(highThreshold, 0, 'f', 1);
-            }
 
             QLabel* label = sensorLabels[sensor.id];
             label->setText(text);
