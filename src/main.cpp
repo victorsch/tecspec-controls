@@ -44,7 +44,11 @@ int main(int argc, char* argv[]) {
 
     // Create and show main window
     MainWindow window(sensorManager, alarmManager, bacnetInterface);
-    window.show();
+    if (displayConfig.devMode) {
+        window.show();
+    } else {
+        window.showFullScreen();
+    }
 
     printf("GUI started. BACnet device is now discoverable on the network.\n");
 

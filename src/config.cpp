@@ -14,8 +14,8 @@ void Config::initDefaults() {
     display.width = 1280;
     display.height = 800;
     display.fullscreen = false;
-    display.devMode = true;  // Set to false for production
-    display.scaleFactor = 0.8f;  // Set to 1.0 for tablet/production
+    display.devMode = false;  // Set to true for development
+    display.scaleFactor = 1.0f;
 
     // BACnet settings
     bacnet.device_id = 1001;

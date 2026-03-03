@@ -104,7 +104,7 @@ class BgWidget : public QWidget {
     QPixmap m_px;
 public:
     BgWidget(const QPixmap& px, QWidget* parent = nullptr) : QWidget(parent), m_px(px) {}
-    void paintEvent(QPaintEvent*) override { QPainter(this).drawPixmap(0, 0, m_px); }
+    void paintEvent(QPaintEvent*) override { QPainter(this).drawPixmap(rect(), m_px); }
 };
 } // namespace
 
