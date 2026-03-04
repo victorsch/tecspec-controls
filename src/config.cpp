@@ -28,10 +28,10 @@ void Config::initDefaults() {
     deviceInfo.model = "HX-5000-A";
     deviceInfo.customer = "";
     deviceInfo.configType = "Standard";
-    deviceInfo.contactName = "";
-    deviceInfo.contactEmail = "";
-    deviceInfo.contactPhone = "";
-    deviceInfo.company = "";
+    deviceInfo.contactName = "Demo User";
+    deviceInfo.contactEmail = "demo@srs-enterprises.com";
+    deviceInfo.contactPhone = "555-555-5555";
+    deviceInfo.company = "SRS";
 
     // Sensor configurations
     sensors = {
@@ -39,8 +39,8 @@ void Config::initDefaults() {
         {"outlet_temp_hot", "Hot Outlet Temperature", "°F", 32, 212, 176, 59},
         {"inlet_temp_cold", "Cold Inlet Temperature", "°F", 32, 122, 104, 41},
         {"outlet_temp_cold", "Cold Outlet Temperature", "°F", 32, 122, 113, 41},
-        {"flow_rate_hot", "Hot Side Flow Rate", "GPM", 0, 300.0f, 240.0f, 150.0f},
-        {"flow_rate_cold", "Cold Side Flow Rate", "GPM", 0, 300.0f, 240.0f, 150.0f},
+        {"flow_rate_hot", "Hot Side Flow Rate", "GPM", 0, 300.0f, 210.0f, 150.0f},
+        {"flow_rate_cold", "Cold Side Flow Rate", "GPM", 0, 300.0f, 210.0f, 150.0f},
         {"pressure_hot_inlet", "Hot Inlet Pressure", "psi", 0, 145, 116, 7.25f},
         {"pressure_hot_outlet", "Hot Outlet Pressure", "psi", 0, 145, 116, 7.25f},
         {"pressure_cold_inlet", "Cold Inlet Pressure", "psi", 0, 145, 116, 7.25f},
