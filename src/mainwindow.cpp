@@ -48,6 +48,34 @@
 #include <poppler/qt6/poppler-qt6.h>
 
 
+// Image label that scales to fill available height while preserving aspect ratio
+class AspectPixmapLabel : public QLabel {
+public:
+    explicit AspectPixmapLabel(const QPixmap& px, QWidget* parent = nullptr)
+        : QLabel(parent), m_src(px) {
+        setAlignment(Qt::AlignCenter);
+        setStyleSheet("background: transparent;");
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    }
+
+    QSize sizeHint() const override {
+        return m_src.isNull() ? QLabel::sizeHint() : m_src.size();
+    }
+
+protected:
+    void resizeEvent(QResizeEvent* e) override {
+        QLabel::resizeEvent(e);
+        if (m_src.isNull() || height() <= 0) return;
+        QPixmap scaled = m_src.scaledToHeight(height(), Qt::SmoothTransformation);
+        QLabel::setPixmap(scaled);
+        if (scaled.width() != minimumWidth())
+            setFixedWidth(scaled.width());
+    }
+
+private:
+    QPixmap m_src;
+};
+
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
                        BACnetInterface& bacnet, QWidget* parent)
     : QMainWindow(parent)
@@ -382,10 +410,7 @@ void MainWindow::setupUI() {
     QHBoxLayout* hotLayout = new QHBoxLayout(hotGroup);
     hotLayout->setSpacing(8);
 
-    QLabel* hotImgLabel = new QLabel();
-    hotImgLabel->setPixmap(QPixmap("../hot.png"));
-    hotImgLabel->setAlignment(Qt::AlignCenter);
-    hotImgLabel->setStyleSheet("background: transparent;");
+    AspectPixmapLabel* hotImgLabel = new AspectPixmapLabel(QPixmap("../hot.png"));
     hotLayout->addWidget(hotImgLabel, 0);
 
     QWidget* hotValWidget = new QWidget();
@@ -423,10 +448,7 @@ void MainWindow::setupUI() {
     coldValLayout->setContentsMargins(0, 0, 0, 0);
     coldLayout->addWidget(coldValWidget, 1);
 
-    QLabel* coldImgLabel = new QLabel();
-    coldImgLabel->setPixmap(QPixmap("../cold.png"));
-    coldImgLabel->setAlignment(Qt::AlignCenter);
-    coldImgLabel->setStyleSheet("background: transparent;");
+    AspectPixmapLabel* coldImgLabel = new AspectPixmapLabel(QPixmap("../cold.png"));
     coldLayout->addWidget(coldImgLabel, 0);
 
     const auto& sensorConfigs = Config::instance().getSensors();
