@@ -24,6 +24,11 @@ void Config::initDefaults() {
     bacnet.ip_address = "0.0.0.0";
     bacnet.ip_port = 47808;
 
+    // Device info
+    deviceInfo.model = "HX-5000-A";
+    deviceInfo.customer = "";
+    deviceInfo.configType = "Standard";
+
     // Sensor configurations
     sensors = {
         {"inlet_temp_hot", "Hot Inlet Temperature", "°F", 32, 212, 185, 50},

@@ -378,8 +378,22 @@ void MainWindow::setupUI() {
             padding: 0 10px;
         }
     )");
-    QVBoxLayout* hotLayout = new QVBoxLayout(hotGroup);
+    QHBoxLayout* hotLayout = new QHBoxLayout(hotGroup);
     hotLayout->setSpacing(8);
+
+    QLabel* hotImgLabel = new QLabel();
+    hotImgLabel->setPixmap(QPixmap("../hot.png"));
+    hotImgLabel->setScaledContents(true);
+    hotImgLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    hotImgLabel->setStyleSheet("background: transparent;");
+    hotLayout->addWidget(hotImgLabel, 0);
+
+    QWidget* hotValWidget = new QWidget();
+    hotValWidget->setStyleSheet("background: transparent;");
+    QVBoxLayout* hotValLayout = new QVBoxLayout(hotValWidget);
+    hotValLayout->setSpacing(8);
+    hotValLayout->setContentsMargins(0, 0, 0, 0);
+    hotLayout->addWidget(hotValWidget, 1);
 
     // Cold side (right column)
     QGroupBox* coldGroup = new QGroupBox("Cold Side", this);
@@ -418,21 +432,47 @@ void MainWindow::setupUI() {
 
     const auto& sensorConfigs = Config::instance().getSensors();
     for (const auto& sensor : sensorConfigs) {
+        bool isCold = sensor.id.find("hot") == std::string::npos;
+        QString fontSize = "20px";
         QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
-        label->setStyleSheet("font-size: 22px; padding: 5px;");
+        label->setStyleSheet(QString("font-size: %1; padding: 5px;").arg(fontSize));
         label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         sensorLabels[sensor.id] = label;
 
-        // Route to appropriate side
-        if (sensor.id.find("hot") != std::string::npos) {
-            hotLayout->addWidget(label);
-        } else {
-            coldValLayout->addWidget(label);
-        }
+        // both sides added below in custom order
     }
 
-    hotLayout->addStretch();
-    coldValLayout->addStretch();
+    // Delta P label for hot side
+    QLabel* deltaPHotLabel = new QLabel("\u0394P: --- psi", this);
+    deltaPHotLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #4ade80;");
+    deltaPHotLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    sensorLabels["pressure_diff_hot"] = deltaPHotLabel;
+
+    // Hot side: inlet at top, flow + ΔP in middle, outlet at bottom
+    if (sensorLabels.count("inlet_temp_hot"))       hotValLayout->addWidget(sensorLabels["inlet_temp_hot"]);
+    if (sensorLabels.count("pressure_hot_inlet"))   hotValLayout->addWidget(sensorLabels["pressure_hot_inlet"]);
+    hotValLayout->addStretch(1);
+    if (sensorLabels.count("flow_rate_hot"))        hotValLayout->addWidget(sensorLabels["flow_rate_hot"]);
+    if (sensorLabels.count("pressure_diff_hot"))    hotValLayout->addWidget(sensorLabels["pressure_diff_hot"]);
+    hotValLayout->addStretch(1);
+    if (sensorLabels.count("outlet_temp_hot"))      hotValLayout->addWidget(sensorLabels["outlet_temp_hot"]);
+    if (sensorLabels.count("pressure_hot_outlet"))  hotValLayout->addWidget(sensorLabels["pressure_hot_outlet"]);
+
+    // Delta P label for cold side
+    QLabel* deltaPColdLabel = new QLabel("\u0394P: --- psi", this);
+    deltaPColdLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #4ade80;");
+    deltaPColdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    sensorLabels["pressure_diff_cold"] = deltaPColdLabel;
+
+    // Cold side: outlet at top aligned with top port, flow in middle, inlet at bottom aligned with bottom port
+    if (sensorLabels.count("outlet_temp_cold"))    coldValLayout->addWidget(sensorLabels["outlet_temp_cold"]);
+    if (sensorLabels.count("pressure_cold_outlet")) coldValLayout->addWidget(sensorLabels["pressure_cold_outlet"]);
+    coldValLayout->addStretch(1);
+    if (sensorLabels.count("flow_rate_cold"))       coldValLayout->addWidget(sensorLabels["flow_rate_cold"]);
+    if (sensorLabels.count("pressure_diff_cold"))   coldValLayout->addWidget(sensorLabels["pressure_diff_cold"]);
+    coldValLayout->addStretch(1);
+    if (sensorLabels.count("inlet_temp_cold"))      coldValLayout->addWidget(sensorLabels["inlet_temp_cold"]);
+    if (sensorLabels.count("pressure_cold_inlet"))  coldValLayout->addWidget(sensorLabels["pressure_cold_inlet"]);
 
     columnsLayout->addWidget(coldGroup, 1);
     columnsLayout->addWidget(imageLabel, 0);
@@ -1213,7 +1253,11 @@ void MainWindow::setupUI() {
     supportSubtitle->setWordWrap(true);
     supportLayout->addWidget(supportSubtitle);
 
-    QString supportUrl = "https://www.srs-enterprises.com/support";
+    const auto& devInfo = Config::instance().getDeviceInfo();
+    QString supportUrl = QString("https://srs-support-order.replit.app/support?model=%1&customer=%2&config=%3")
+        .arg(QString::fromStdString(devInfo.model))
+        .arg(QString::fromStdString(devInfo.customer))
+        .arg(QString::fromStdString(devInfo.configType));
     QRcode* supportQr = QRcode_encodeString(supportUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (supportQr) {
         int scale = 10;
@@ -1442,7 +1486,7 @@ void MainWindow::setupUI() {
     aboutLayout->addSpacing(20);
 
     // QR code for website
-    QString aboutUrl = "https://www.srs-enterprises.com";
+    QString aboutUrl = "https://srs-support-order.replit.app";
     QRcode* aboutQr = QRcode_encodeString(aboutUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (aboutQr) {
         int scale = 10;
@@ -1561,19 +1605,28 @@ void MainWindow::updateDisplay() {
             QString text = name + QString(": %1 ").arg(value, 0, 'f', 1) +
                           QString::fromStdString(sensor.unit);
 
-            // Color based on alarm state
             bool inAlarm = alarmManager.isAlarmActive(sensor.id, "HIGH") ||
                            alarmManager.isAlarmActive(sensor.id, "LOW");
+            bool isCold = sensor.id.find("hot") == std::string::npos;
+            QString fs = "20px";
 
             QLabel* label = sensorLabels[sensor.id];
             label->setText(text);
-
-            if (inAlarm) {
-                label->setStyleSheet("font-size: 22px; padding: 5px; color: #ff6b6b; font-weight: bold;");
-            } else {
-                label->setStyleSheet("font-size: 22px; padding: 5px; color: #4ade80;");
-            }
+            if (inAlarm)
+                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #ff6b6b; font-weight: bold;").arg(fs));
+            else
+                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #4ade80;").arg(fs));
         }
+    }
+
+    // Update ΔP labels
+    if (sensorLabels.count("pressure_diff_hot")) {
+        float dp = values.count("pressure_diff_hot") ? values.at("pressure_diff_hot") : 0.0f;
+        sensorLabels["pressure_diff_hot"]->setText(QString("\u0394P: %1 psi").arg(dp, 0, 'f', 2));
+    }
+    if (sensorLabels.count("pressure_diff_cold")) {
+        float dp = values.count("pressure_diff_cold") ? values.at("pressure_diff_cold") : 0.0f;
+        sensorLabels["pressure_diff_cold"]->setText(QString("\u0394P: %1 psi").arg(dp, 0, 'f', 2));
     }
 
     // Update alarm count
@@ -1621,16 +1674,18 @@ void MainWindow::onDiagnoseClicked() {
     auto alarms = alarmManager.getActiveAlarms();
     if (alarms.empty()) return;
 
-    // Build comma-separated alarm list
+    // Build comma-separated alarm list as TYPE_SENSORID (e.g. HIGH_INLET_TEMP_HOT)
     QStringList alarmList;
     for (const auto& alarm : alarms) {
-        QString alarmName = QString::fromStdString(alarm.sensorName);
-        alarmList.append(alarmName);
+        QString entry = QString::fromStdString(alarm.type) + "_"
+                      + QString::fromStdString(alarm.sensorId).toUpper();
+        alarmList.append(entry);
     }
     QString alarmsParam = alarmList.join(",");
 
     // Build URL
-    QString url = QString("https://www.srs-enterprises.com/?alarms=%1").arg(QUrl::toPercentEncoding(alarmsParam).constData());
+    QString url = "https://srs-support-order.replit.app/diagnosis?alarms="
+                + QString(QUrl::toPercentEncoding(alarmsParam));
 
     // Generate QR code
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
@@ -1800,14 +1855,15 @@ void MainWindow::onGenerateOrder() {
     orderQuantity->clear();
 
     // Build URL encoding all items in the order
-    QStringList items;
+    QStringList parts, qtys;
     for (int i = 0; i < orderTable->rowCount(); i++) {
-        items << orderTable->item(i, 0)->text()
-               + "|" + orderTable->item(i, 1)->text()
-               + "|" + orderTable->item(i, 2)->text();
+        parts << orderTable->item(i, 0)->text();
+        qtys  << orderTable->item(i, 2)->text();
     }
-    QString url = "https://www.srs-enterprises.com/order?items="
-                  + QString(QUrl::toPercentEncoding(items.join(",")));
+    QString url = "https://srs-support-order.replit.app/order?parts="
+                + QString(QUrl::toPercentEncoding(parts.join(",")))
+                + "&qty="
+                + QString(QUrl::toPercentEncoding(qtys.join(",")));
 
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (!qr) return;

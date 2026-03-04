@@ -31,6 +31,12 @@ struct DisplayConfig {
     float scaleFactor;
 };
 
+struct DeviceInfo {
+    std::string model;
+    std::string customer;
+    std::string configType;
+};
+
 class Config {
 public:
     static Config& instance();
@@ -38,6 +44,7 @@ public:
     const std::vector<SensorConfig>& getSensors() const { return sensors; }
     const BACnetConfig& getBACnetConfig() const { return bacnet; }
     const DisplayConfig& getDisplayConfig() const { return display; }
+    const DeviceInfo& getDeviceInfo() const { return deviceInfo; }
 
     const SensorConfig* getSensorById(const std::string& id) const;
 
@@ -47,6 +54,7 @@ private:
     std::vector<SensorConfig> sensors;
     BACnetConfig bacnet;
     DisplayConfig display;
+    DeviceInfo deviceInfo;
 
     void initDefaults();
 };
