@@ -47,6 +47,7 @@
 #include <QAudioOutput>
 #include <poppler/qt6/poppler-qt6.h>
 
+
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
                        BACnetInterface& bacnet, QWidget* parent)
     : QMainWindow(parent)
@@ -383,8 +384,7 @@ void MainWindow::setupUI() {
 
     QLabel* hotImgLabel = new QLabel();
     hotImgLabel->setPixmap(QPixmap("../hot.png"));
-    hotImgLabel->setScaledContents(true);
-    hotImgLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    hotImgLabel->setAlignment(Qt::AlignCenter);
     hotImgLabel->setStyleSheet("background: transparent;");
     hotLayout->addWidget(hotImgLabel, 0);
 
@@ -425,8 +425,7 @@ void MainWindow::setupUI() {
 
     QLabel* coldImgLabel = new QLabel();
     coldImgLabel->setPixmap(QPixmap("../cold.png"));
-    coldImgLabel->setScaledContents(true);
-    coldImgLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    coldImgLabel->setAlignment(Qt::AlignCenter);
     coldImgLabel->setStyleSheet("background: transparent;");
     coldLayout->addWidget(coldImgLabel, 0);
 
