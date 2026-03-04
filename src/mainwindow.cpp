@@ -1257,7 +1257,8 @@ void MainWindow::setupUI() {
     QString supportUrl = QString("https://srs-support-order.replit.app/support?model=%1&customer=%2&config=%3")
         .arg(QString::fromStdString(devInfo.model))
         .arg(QString::fromStdString(devInfo.customer))
-        .arg(QString::fromStdString(devInfo.configType));
+        .arg(QString::fromStdString(devInfo.configType))
+        + contactQueryParams();
     QRcode* supportQr = QRcode_encodeString(supportUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (supportQr) {
         int scale = 10;
@@ -1486,7 +1487,7 @@ void MainWindow::setupUI() {
     aboutLayout->addSpacing(20);
 
     // QR code for website
-    QString aboutUrl = "https://srs-support-order.replit.app";
+    QString aboutUrl = "https://srs-support-order.replit.app?" + contactQueryParams().mid(1); // strip leading &
     QRcode* aboutQr = QRcode_encodeString(aboutUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (aboutQr) {
         int scale = 10;
@@ -1685,7 +1686,8 @@ void MainWindow::onDiagnoseClicked() {
 
     // Build URL
     QString url = "https://srs-support-order.replit.app/diagnosis?alarms="
-                + QString(QUrl::toPercentEncoding(alarmsParam));
+                + QString(QUrl::toPercentEncoding(alarmsParam))
+                + contactQueryParams();
 
     // Generate QR code
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
@@ -1863,7 +1865,8 @@ void MainWindow::onGenerateOrder() {
     QString url = "https://srs-support-order.replit.app/order?parts="
                 + QString(QUrl::toPercentEncoding(parts.join(",")))
                 + "&qty="
-                + QString(QUrl::toPercentEncoding(qtys.join(",")));
+                + QString(QUrl::toPercentEncoding(qtys.join(",")))
+                + contactQueryParams();
 
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (!qr) return;
@@ -1882,6 +1885,15 @@ void MainWindow::onGenerateOrder() {
 
     orderQrLabel->setPixmap(QPixmap::fromImage(qrImage));
     orderQrHint->show();
+}
+
+QString MainWindow::contactQueryParams() const {
+    const auto& d = Config::instance().getDeviceInfo();
+    return QString("&contact_name=%1&contact_email=%2&contact_phone=%3&company=%4")
+        .arg(QString(QUrl::toPercentEncoding(QString::fromStdString(d.contactName))))
+        .arg(QString(QUrl::toPercentEncoding(QString::fromStdString(d.contactEmail))))
+        .arg(QString(QUrl::toPercentEncoding(QString::fromStdString(d.contactPhone))))
+        .arg(QString(QUrl::toPercentEncoding(QString::fromStdString(d.company))));
 }
 
 void MainWindow::onSaveThresholds() {

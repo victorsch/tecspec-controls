@@ -109,6 +109,7 @@ private:
 
     void onGenerateOrder();
     void onSaveThresholds();
+    QString contactQueryParams() const;
 
     // Video tab components
     QMediaPlayer* videoPlayer;

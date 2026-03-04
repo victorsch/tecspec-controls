@@ -35,6 +35,10 @@ struct DeviceInfo {
     std::string model;
     std::string customer;
     std::string configType;
+    std::string contactName;
+    std::string contactEmail;
+    std::string contactPhone;
+    std::string company;
 };
 
 class Config {

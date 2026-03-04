@@ -28,6 +28,10 @@ void Config::initDefaults() {
     deviceInfo.model = "HX-5000-A";
     deviceInfo.customer = "";
     deviceInfo.configType = "Standard";
+    deviceInfo.contactName = "";
+    deviceInfo.contactEmail = "";
+    deviceInfo.contactPhone = "";
+    deviceInfo.company = "";
 
     // Sensor configurations
     sensors = {
