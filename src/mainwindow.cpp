@@ -399,8 +399,22 @@ void MainWindow::setupUI() {
             padding: 0 10px;
         }
     )");
-    QVBoxLayout* coldLayout = new QVBoxLayout(coldGroup);
+    QHBoxLayout* coldLayout = new QHBoxLayout(coldGroup);
     coldLayout->setSpacing(8);
+
+    QWidget* coldValWidget = new QWidget();
+    coldValWidget->setStyleSheet("background: transparent;");
+    QVBoxLayout* coldValLayout = new QVBoxLayout(coldValWidget);
+    coldValLayout->setSpacing(8);
+    coldValLayout->setContentsMargins(0, 0, 0, 0);
+    coldLayout->addWidget(coldValWidget, 1);
+
+    QLabel* coldImgLabel = new QLabel();
+    coldImgLabel->setPixmap(QPixmap("../cold.png"));
+    coldImgLabel->setScaledContents(true);
+    coldImgLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    coldImgLabel->setStyleSheet("background: transparent;");
+    coldLayout->addWidget(coldImgLabel, 0);
 
     const auto& sensorConfigs = Config::instance().getSensors();
     for (const auto& sensor : sensorConfigs) {
@@ -413,12 +427,12 @@ void MainWindow::setupUI() {
         if (sensor.id.find("hot") != std::string::npos) {
             hotLayout->addWidget(label);
         } else {
-            coldLayout->addWidget(label);
+            coldValLayout->addWidget(label);
         }
     }
 
     hotLayout->addStretch();
-    coldLayout->addStretch();
+    coldValLayout->addStretch();
 
     columnsLayout->addWidget(coldGroup, 1);
     columnsLayout->addWidget(imageLabel, 0);
