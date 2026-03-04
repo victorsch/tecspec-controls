@@ -1675,11 +1675,12 @@ void MainWindow::onDiagnoseClicked() {
     auto alarms = alarmManager.getActiveAlarms();
     if (alarms.empty()) return;
 
-    // Build comma-separated alarm list as TYPE_SENSORID (e.g. HIGH_INLET_TEMP_HOT)
+    // Build comma-separated alarm list as TYPE_SENSORID:threshold (e.g. HIGH_INLET_TEMP_HOT:200)
     QStringList alarmList;
     for (const auto& alarm : alarms) {
         QString entry = QString::fromStdString(alarm.type) + "_"
-                      + QString::fromStdString(alarm.sensorId).toUpper();
+                      + QString::fromStdString(alarm.sensorId).toUpper()
+                      + ":" + QString::number(alarm.threshold, 'g', 6);
         alarmList.append(entry);
     }
     QString alarmsParam = alarmList.join(",");
