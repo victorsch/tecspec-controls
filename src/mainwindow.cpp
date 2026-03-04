@@ -1713,33 +1713,93 @@ void MainWindow::onDiagnoseClicked() {
     }
     QRcode_free(qr);
 
+    // Add white padding around QR so it's scannable on dark background
+    QImage paddedQr(qrImage.width() + 40, qrImage.height() + 40, QImage::Format_RGB32);
+    paddedQr.fill(Qt::white);
+    QPainter qrPainter(&paddedQr);
+    qrPainter.drawImage(20, 20, qrImage);
+    qrPainter.end();
+
     // Create popup dialog
     QDialog* dialog = new QDialog(this);
     dialog->setWindowTitle("Diagnose Alarms");
-    dialog->setStyleSheet("background: white;");
+    dialog->setMinimumWidth(440);
+    dialog->setStyleSheet("QDialog { background: #0d0d2b; }");
 
     QVBoxLayout* layout = new QVBoxLayout(dialog);
+    layout->setSpacing(12);
+    layout->setContentsMargins(28, 24, 28, 24);
 
-    QLabel* titleLabel = new QLabel("Scan QR Code to Diagnose", dialog);
-    titleLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: black; padding: 10px;");
+    QLabel* titleLabel = new QLabel("Scan to Diagnose", dialog);
+    titleLabel->setStyleSheet("font-size: 22px; font-weight: bold; color: white;");
     titleLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(titleLabel);
 
+    QLabel* subtitleLabel = new QLabel("Point your phone camera at this code", dialog);
+    subtitleLabel->setStyleSheet("font-size: 13px; color: #6b7280;");
+    subtitleLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(subtitleLabel);
+
+    layout->addSpacing(4);
+
     QLabel* qrLabel = new QLabel(dialog);
-    qrLabel->setPixmap(QPixmap::fromImage(qrImage));
+    qrLabel->setPixmap(QPixmap::fromImage(paddedQr));
     qrLabel->setAlignment(Qt::AlignCenter);
     layout->addWidget(qrLabel);
 
-    QLabel* alarmsLabel = new QLabel(QString("Active alarms: %1").arg(alarmsParam), dialog);
-    alarmsLabel->setStyleSheet("font-size: 12px; color: #666; padding: 10px;");
-    alarmsLabel->setAlignment(Qt::AlignCenter);
-    alarmsLabel->setWordWrap(true);
-    layout->addWidget(alarmsLabel);
+    layout->addSpacing(4);
+
+    QLabel* alarmsHeader = new QLabel("Active Alarms", dialog);
+    alarmsHeader->setStyleSheet("font-size: 13px; font-weight: bold; color: #6b7280; text-transform: uppercase;");
+    layout->addWidget(alarmsHeader);
+
+    for (const QString& entry : alarmList) {
+        QStringList parts = entry.split(":");
+        QString code = parts[0];
+        QString threshold = parts.size() > 1 ? parts[1] : "";
+
+        QWidget* row = new QWidget(dialog);
+        row->setStyleSheet("background: #1a1a3e; border-radius: 6px;");
+        QHBoxLayout* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(10, 6, 10, 6);
+        rowLayout->setSpacing(8);
+
+        QLabel* dot = new QLabel("●", row);
+        dot->setStyleSheet("color: #ef4444; font-size: 9px;");
+        dot->setFixedWidth(14);
+        rowLayout->addWidget(dot);
+
+        QLabel* codeLabel = new QLabel(code, row);
+        codeLabel->setStyleSheet("color: #fca5a5; font-size: 13px;");
+        rowLayout->addWidget(codeLabel);
+
+        rowLayout->addStretch();
+
+        if (!threshold.isEmpty()) {
+            QLabel* threshLabel = new QLabel(threshold, row);
+            threshLabel->setStyleSheet("color: #9ca3af; font-size: 13px;");
+            rowLayout->addWidget(threshLabel);
+        }
+
+        layout->addWidget(row);
+    }
+
+    layout->addSpacing(8);
 
     QPushButton* closeButton = new QPushButton("Close", dialog);
-    closeButton->setStyleSheet("background: #16213e; color: white; padding: 10px 20px;");
+    closeButton->setStyleSheet(R"(
+        QPushButton {
+            background: #1e2d5a;
+            color: white;
+            border: 1px solid #2a3f7a;
+            border-radius: 8px;
+            padding: 10px 32px;
+            font-size: 14px;
+        }
+        QPushButton:pressed { background: #16213e; }
+    )");
     connect(closeButton, &QPushButton::clicked, dialog, &QDialog::accept);
-    layout->addWidget(closeButton);
+    layout->addWidget(closeButton, 0, Qt::AlignCenter);
 
     dialog->exec();
     delete dialog;
