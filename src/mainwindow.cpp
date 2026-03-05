@@ -42,6 +42,8 @@
 #include <QGraphicsPixmapItem>
 #include <QStackedLayout>
 #include <QMediaPlayer>
+#include <QMediaDevices>
+#include <QAudioDevice>
 #include <QVideoWidget>
 #include <QListWidget>
 #include <QAudioOutput>
@@ -1105,7 +1107,7 @@ void MainWindow::setupUI() {
     const QList<VideoEntry> videos = {
         { "How it Works",          "" },
         { "Exploded Parts View",   videoDir + "/exploded.mp4" },
-        { "Opening Heat Exchanger","" },
+        { "Opening Heat Exchanger", videoDir + "/opening.mp4" },
         { "Cleaning",              "" },
         { "Changing Gaskets",      "" },
         { "Closing Heat Exchanger","" },
@@ -1125,7 +1127,8 @@ void MainWindow::setupUI() {
     videoRightLayout->setSpacing(0);
 
     videoPlayer = new QMediaPlayer(this);
-    audioOutput = new QAudioOutput(this);
+    audioOutput = new QAudioOutput(QMediaDevices::defaultAudioOutput(), this);
+    audioOutput->setVolume(1.0f);
     videoPlayer->setAudioOutput(audioOutput);
 
     // "No video" placeholder
