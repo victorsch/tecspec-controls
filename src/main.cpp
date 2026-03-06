@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Hide hardware cursor on embedded platforms (eglfs/linuxfb)
-    if (!displayConfig.devMode) {
+    if (displayConfig.hideCursor) {
         qputenv("QT_QPA_EGLFS_HIDECURSOR", "1");
         qputenv("QT_QPA_FB_HIDECURSOR", "1");
     }

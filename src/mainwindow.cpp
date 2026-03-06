@@ -93,7 +93,7 @@ MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
 
     // Hide cursor for embedded kiosk mode (transparent pixmap works on eglfs/linuxfb
     // where Qt::BlankCursor is ignored)
-    if (!displayConfig.devMode) {
+    if (displayConfig.hideCursor) {
         QPixmap cursorPixmap(1, 1);
         cursorPixmap.fill(Qt::transparent);
         QApplication::setOverrideCursor(QCursor(cursorPixmap));
@@ -156,7 +156,7 @@ void MainWindow::setupUI() {
         std::mt19937 rng(42);
 
         // 1. Flat dark-navy base
-        p.fillRect(m_bgPixmap.rect(), QColor(0x16, 0x16, 0x32));
+        p.fillRect(m_bgPixmap.rect(), QColor(0x0a, 0x0a, 0x14));
 
 
 
@@ -201,8 +201,8 @@ void MainWindow::setupUI() {
             border-radius: 8px;
         }
         QTabBar::tab {
-            background: #10102c;
-            color: #a0a0a0;
+            background: #212133;
+            color: #a0a0c0;
             padding: 18px 36px;
             margin-right: 2px;
             border-top-left-radius: 6px;
@@ -211,13 +211,12 @@ void MainWindow::setupUI() {
             font-weight: bold;
         }
         QTabBar::tab:selected {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 #22224a, stop:1 #141428);
+            background: #2e2e48;
             color: white;
             border-bottom: 2px solid white;
         }
         QTabBar::tab:hover:!selected {
-            background: #1e1e40;
+            background: #2a2a3f;
             color: #e0e0e0;
         }
     )");
@@ -249,7 +248,7 @@ void MainWindow::setupUI() {
             padding: 0 5px;
         }
         QPushButton {
-            background: #18183a;
+            background: #212133;
             color: #e0e0e0;
             border: 1px solid #2a2a52;
             border-radius: 4px;
@@ -355,7 +354,7 @@ void MainWindow::setupUI() {
     // Title
     QLabel* title = new QLabel("Real-time Monitoring", this);
     title->setAlignment(Qt::AlignCenter);
-    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: #87afe1;");
+    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: #a0a0c0;");
     monitoringLayout->addWidget(title);
 
     // Status bar
@@ -364,11 +363,11 @@ void MainWindow::setupUI() {
     statusLayout->addStretch();
 
     alarmBellLabel = new QLabel(this);
-    alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
+    alarmBellLabel->setPixmap(bellPixmap(QColor("#a0a0c0"), 30));
     statusLayout->addWidget(alarmBellLabel);
 
     alarmCountLabel = new QLabel("Alarms: 0", this);
-    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
+    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #a0a0c0;");
     statusLayout->addWidget(alarmCountLabel);
 
     diagnoseButton = new QPushButton("Diagnose", this);
@@ -1665,12 +1664,12 @@ void MainWindow::updateDisplay() {
     int alarmCount = alarmManager.getAlarmCount();
     alarmCountLabel->setText(QString("Alarms: %1").arg(alarmCount));
     if (alarmCount > 0) {
-        alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
-        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
+        alarmBellLabel->setPixmap(bellPixmap(QColor("#b91c1c"), 30));
+        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #b91c1c;");
         diagnoseButton->show();
     } else {
-        alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
-        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
+        alarmBellLabel->setPixmap(bellPixmap(QColor("#a0a0c0"), 30));
+        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #a0a0c0;");
         diagnoseButton->hide();
     }
 

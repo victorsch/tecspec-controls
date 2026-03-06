@@ -15,6 +15,7 @@ void Config::initDefaults() {
     display.height = 800;
     display.fullscreen = false;
     display.devMode = false;  // Set to true for development
+    display.hideCursor = false;
     display.scaleFactor = 1.0f;
 
     // BACnet settings
