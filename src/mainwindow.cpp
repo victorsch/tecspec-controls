@@ -355,7 +355,7 @@ void MainWindow::setupUI() {
     // Title
     QLabel* title = new QLabel("Real-time Monitoring", this);
     title->setAlignment(Qt::AlignCenter);
-    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: #00d4ff;");
+    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: #87afe1;");
     monitoringLayout->addWidget(title);
 
     // Status bar
@@ -364,11 +364,11 @@ void MainWindow::setupUI() {
     statusLayout->addStretch();
 
     alarmBellLabel = new QLabel(this);
-    alarmBellLabel->setPixmap(bellPixmap(QColor("#4ade80"), 30));
+    alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
     statusLayout->addWidget(alarmBellLabel);
 
     alarmCountLabel = new QLabel("Alarms: 0", this);
-    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #4ade80;");
+    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
     statusLayout->addWidget(alarmCountLabel);
 
     diagnoseButton = new QPushButton("Diagnose", this);
@@ -457,8 +457,9 @@ void MainWindow::setupUI() {
     for (const auto& sensor : sensorConfigs) {
         bool isCold = sensor.id.find("hot") == std::string::npos;
         QString fontSize = "20px";
+        QString sideColor = isCold ? "#00d4ff" : "#ff6b6b";
         QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
-        label->setStyleSheet(QString("font-size: %1; padding: 5px;").arg(fontSize));
+        label->setStyleSheet(QString("font-size: %1; padding: 5px; color: %2;").arg(fontSize, sideColor));
         label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         sensorLabels[sensor.id] = label;
 
@@ -467,7 +468,7 @@ void MainWindow::setupUI() {
 
     // Delta P label for hot side
     QLabel* deltaPHotLabel = new QLabel("\u0394P: --- psi", this);
-    deltaPHotLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #4ade80;");
+    deltaPHotLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #ff6b6b;");
     deltaPHotLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_hot"] = deltaPHotLabel;
 
@@ -483,7 +484,7 @@ void MainWindow::setupUI() {
 
     // Delta P label for cold side
     QLabel* deltaPColdLabel = new QLabel("\u0394P: --- psi", this);
-    deltaPColdLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #4ade80;");
+    deltaPColdLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #00d4ff;");
     deltaPColdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_cold"] = deltaPColdLabel;
 
@@ -1127,6 +1128,14 @@ void MainWindow::setupUI() {
     videoRightLayout->setSpacing(0);
 
     videoPlayer = new QMediaPlayer(this);
+
+    if (Config::instance().getDisplayConfig().devMode) {
+        qDebug() << "Available audio outputs:";
+        for (const auto& dev : QMediaDevices::audioOutputs())
+            qDebug() << " " << dev.id() << dev.description();
+        qDebug() << "Default:" << QMediaDevices::defaultAudioOutput().id();
+    }
+
     audioOutput = new QAudioOutput(QMediaDevices::defaultAudioOutput(), this);
     audioOutput->setVolume(1.0f);
     videoPlayer->setAudioOutput(audioOutput);
@@ -1638,9 +1647,7 @@ void MainWindow::updateDisplay() {
             QLabel* label = sensorLabels[sensor.id];
             label->setText(text);
             if (inAlarm)
-                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #ff6b6b; font-weight: bold;").arg(fs));
-            else
-                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #4ade80;").arg(fs));
+                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #facc15; font-weight: bold;").arg(fs));
         }
     }
 
@@ -1662,8 +1669,8 @@ void MainWindow::updateDisplay() {
         alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
         diagnoseButton->show();
     } else {
-        alarmBellLabel->setPixmap(bellPixmap(QColor("#4ade80"), 30));
-        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #4ade80;");
+        alarmBellLabel->setPixmap(bellPixmap(QColor("#ff6b6b"), 30));
+        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #ff6b6b;");
         diagnoseButton->hide();
     }
 
