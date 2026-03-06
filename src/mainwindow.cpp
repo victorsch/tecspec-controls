@@ -839,103 +839,61 @@ void MainWindow::setupUI() {
     // Parts List tab
     QWidget* partsTab = new QWidget();
     partsTab->setStyleSheet("background: transparent;");
-    QHBoxLayout* partsColumnsLayout = new QHBoxLayout(partsTab);
-    partsColumnsLayout->setSpacing(20);
+    QVBoxLayout* partsMainLayout = new QVBoxLayout(partsTab);
+    partsMainLayout->setSpacing(10);
+    partsMainLayout->setContentsMargins(10, 10, 10, 10);
 
-    // Left column: Order form
-    QGroupBox* orderGroup = new QGroupBox("Order Parts", this);
-    orderGroup->setStyleSheet(R"(
-        QGroupBox {
-            font-size: 20px;
-            font-weight: bold;
-            color: white;
-            border: 2px solid white;
-            border-radius: 10px;
-            margin-top: 20px;
-            padding: 15px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 15px;
-            padding: 0 10px;
-        }
+    // Hidden form fields still needed by onGenerateOrder — parented to a hidden
+    // container so they don't appear as floating widgets on screen
+    QWidget* hiddenFields = new QWidget(this);
+    hiddenFields->hide();
+    orderPartNumber = new QLineEdit(hiddenFields);
+    orderPartName   = new QLineEdit(hiddenFields);
+    orderQuantity   = new QLineEdit(hiddenFields);
+
+    // Top row: assembly image + QR code
+    QWidget* topRow = new QWidget();
+    QHBoxLayout* topRowLayout = new QHBoxLayout(topRow);
+    topRowLayout->setSpacing(12);
+    topRowLayout->setContentsMargins(0, 0, 0, 0);
+
+    topRow->setFixedHeight(220);
+
+    QLabel* assemblyLabel = new QLabel("PICTURE OF ASSEMBLY HERE", this);
+    assemblyLabel->setAlignment(Qt::AlignCenter);
+    assemblyLabel->setStyleSheet(R"(
+        font-size: 28px; font-weight: bold; color: #a0a0c0;
+        border: 2px dashed #2a2a52; border-radius: 10px;
+        background: rgba(33,33,51,0.4);
     )");
-    QVBoxLayout* orderLayout = new QVBoxLayout(orderGroup);
-    orderLayout->setSpacing(12);
+    topRowLayout->addWidget(assemblyLabel, 3);
 
-    QString inputStyle = R"(
-        QLineEdit {
-            background: #18183a;
-            border: 2px solid #2a2a52;
-            border-radius: 6px;
-            color: white;
-            padding: 10px;
-            font-size: 16px;
-        }
-        QLineEdit:focus {
-            border-color: #00d4ff;
-        }
-    )";
-
-    QLabel* partLabel = new QLabel("Part Number:", this);
-    partLabel->setStyleSheet("font-size: 16px; color: white;");
-    orderLayout->addWidget(partLabel);
-
-    orderPartNumber = new QLineEdit(this);
-    orderPartNumber->setPlaceholderText("Select an item from the table");
-    orderPartNumber->setStyleSheet(inputStyle);
-    orderLayout->addWidget(orderPartNumber);
-
-    QLabel* nameLabel = new QLabel("Part Name:", this);
-    nameLabel->setStyleSheet("font-size: 16px; color: white;");
-    orderLayout->addWidget(nameLabel);
-
-    orderPartName = new QLineEdit(this);
-    orderPartName->setPlaceholderText("Select an item from the table");
-    orderPartName->setStyleSheet(inputStyle);
-    orderLayout->addWidget(orderPartName);
-
-    QLabel* qtyLabel = new QLabel("Quantity:", this);
-    qtyLabel->setStyleSheet("font-size: 16px; color: white;");
-    orderLayout->addWidget(qtyLabel);
-
-    orderQuantity = new QLineEdit(this);
-    orderQuantity->setPlaceholderText("Select an item from the table");
-    orderQuantity->setStyleSheet(inputStyle);
-    orderLayout->addWidget(orderQuantity);
-
-    QPushButton* generateBtn = new QPushButton("Add to Order", this);
-    generateBtn->setStyleSheet(R"(
-        QPushButton {
-            background: #1e2044;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 12px;
-            border-radius: 6px;
-            border: 2px solid #00d4ff;
-        }
-        QPushButton:pressed {
-            background: #141428;
-        }
-    )");
-    connect(generateBtn, &QPushButton::clicked, this, &MainWindow::onGenerateOrder);
-    orderLayout->addWidget(generateBtn);
-
-    orderLayout->addStretch();
+    QWidget* qrPanel = new QWidget();
+    QVBoxLayout* qrPanelLayout = new QVBoxLayout(qrPanel);
+    qrPanelLayout->setAlignment(Qt::AlignCenter);
+    qrPanelLayout->setContentsMargins(8, 8, 8, 8);
+    qrPanelLayout->setSpacing(6);
 
     orderQrLabel = new QLabel(this);
     orderQrLabel->setAlignment(Qt::AlignCenter);
-    orderLayout->addWidget(orderQrLabel);
+    orderQrLabel->setFixedSize(180, 180);
+    qrPanelLayout->addWidget(orderQrLabel);
 
     orderQrHint = new QLabel(this);
     orderQrHint->setText("Scan to complete your order");
     orderQrHint->setAlignment(Qt::AlignCenter);
-    orderQrHint->setStyleSheet("font-size: 16px; color: white; padding: 5px;");
+    orderQrHint->setStyleSheet("font-size: 14px; color: white; padding: 4px;");
     orderQrHint->hide();
-    orderLayout->addWidget(orderQrHint);
+    qrPanelLayout->addWidget(orderQrHint);
 
-    orderLayout->addStretch();
+    topRowLayout->addWidget(qrPanel, 1);
+    partsMainLayout->addWidget(topRow);
+
+    // Bottom row
+    QWidget* bottomRow = new QWidget();
+    QHBoxLayout* bottomLayout = new QHBoxLayout(bottomRow);
+    bottomLayout->setSpacing(12);
+    bottomLayout->setContentsMargins(0, 0, 0, 0);
 
     QString tableStyle = R"(
         QTableWidget {
@@ -960,28 +918,28 @@ void MainWindow::setupUI() {
         }
     )";
 
-    // Right column: split into parts catalog (top) and current order (bottom)
-    QWidget* tableContainer = new QWidget();
-    QVBoxLayout* tableLayout = new QVBoxLayout(tableContainer);
-    tableLayout->setContentsMargins(0, 0, 0, 8);
-    tableLayout->setSpacing(6);
+    // --- Parts Catalog (left) ---
+    QWidget* catalogContainer = new QWidget();
+    QVBoxLayout* catalogLayout = new QVBoxLayout(catalogContainer);
+    catalogLayout->setContentsMargins(0, 0, 0, 0);
+    catalogLayout->setSpacing(4);
 
-    // --- Parts catalog ---
     QLabel* catalogLabel = new QLabel("Parts Catalog", this);
     catalogLabel->setStyleSheet("font-size: 16px; font-weight: bold; color: white; padding: 4px 0;");
-    tableLayout->addWidget(catalogLabel);
+    catalogLayout->addWidget(catalogLabel);
 
     partsTable = new QTableWidget(this);
-    partsTable->setColumnCount(3);
-    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
+    partsTable->setColumnCount(4);
+    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity", "Add to Order"});
     partsTable->verticalHeader()->setVisible(false);
     partsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-    partsTable->setColumnWidth(0, 240);
+    partsTable->setColumnWidth(0, 180);
     partsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     partsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    partsTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
+    partsTable->setColumnWidth(3, 130);
     partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    partsTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    partsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    partsTable->setSelectionMode(QAbstractItemView::NoSelection);
     partsTable->setAlternatingRowColors(true);
     partsTable->setStyleSheet(tableStyle);
 
@@ -1006,26 +964,42 @@ void MainWindow::setupUI() {
                 itemQty->setTextAlignment(Qt::AlignCenter);
                 partsTable->setItem(row, 2, itemQty);
                 partsTable->setRowHeight(row, 44);
+
+                QPushButton* addBtn = new QPushButton("+ Add", this);
+                addBtn->setStyleSheet(R"(
+                    QPushButton {
+                        background: #1e2044; color: #00d4ff;
+                        font-size: 13px; font-weight: bold;
+                        padding: 4px 8px; border-radius: 4px;
+                        border: 1px solid #00d4ff;
+                    }
+                    QPushButton:pressed { background: #141428; }
+                )");
+                connect(addBtn, &QPushButton::clicked, this, [this, row]() {
+                    if (auto* i = partsTable->item(row, 0)) orderPartNumber->setText(i->text());
+                    if (auto* i = partsTable->item(row, 1)) orderPartName->setText(i->text());
+                    if (auto* i = partsTable->item(row, 2)) orderQuantity->setText(i->text());
+                    onGenerateOrder();
+                });
+                partsTable->setCellWidget(row, 3, addBtn);
             }
         }
         csvFile.close();
     }
 
-    connect(partsTable, &QTableWidget::cellPressed, this, [this](int row, int) {
-        partsTable->selectRow(row);
-        if (auto* i = partsTable->item(row, 0)) orderPartNumber->setText(i->text());
-        if (auto* i = partsTable->item(row, 1)) orderPartName->setText(i->text());
-        if (auto* i = partsTable->item(row, 2)) orderQuantity->setText(i->text());
-        QTimer::singleShot(150, this, [this]() { partsTable->clearSelection(); });
-    });
-
     QScroller::grabGesture(partsTable->viewport(), QScroller::TouchGesture);
-    tableLayout->addWidget(partsTable, 3);
+    catalogLayout->addWidget(partsTable);
+    bottomLayout->addWidget(catalogContainer, 3);
 
-    // --- Current order ---
+    // --- Right panel: Current Order + QR code ---
+    QWidget* rightPanel = new QWidget();
+    QVBoxLayout* orderPanelLayout = new QVBoxLayout(rightPanel);
+    orderPanelLayout->setContentsMargins(0, 0, 0, 0);
+    orderPanelLayout->setSpacing(6);
+
     QWidget* orderHeaderRow = new QWidget();
     QHBoxLayout* orderHeaderLayout = new QHBoxLayout(orderHeaderRow);
-    orderHeaderLayout->setContentsMargins(0, 4, 0, 0);
+    orderHeaderLayout->setContentsMargins(0, 0, 0, 0);
     orderHeaderLayout->setSpacing(10);
 
     QLabel* orderTableLabel = new QLabel("Current Order", this);
@@ -1044,14 +1018,14 @@ void MainWindow::setupUI() {
         QPushButton:pressed { background: #141428; }
     )");
     orderHeaderLayout->addWidget(clearOrderBtn);
-    tableLayout->addWidget(orderHeaderRow);
+    orderPanelLayout->addWidget(orderHeaderRow);
 
     orderTable = new QTableWidget(this);
     orderTable->setColumnCount(3);
     orderTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity"});
     orderTable->verticalHeader()->setVisible(false);
     orderTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-    orderTable->setColumnWidth(0, 240);
+    orderTable->setColumnWidth(0, 140);
     orderTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     orderTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     orderTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -1060,7 +1034,7 @@ void MainWindow::setupUI() {
     orderTable->setAlternatingRowColors(true);
     orderTable->setStyleSheet(tableStyle);
     QScroller::grabGesture(orderTable->viewport(), QScroller::TouchGesture);
-    tableLayout->addWidget(orderTable, 2);
+    orderPanelLayout->addWidget(orderTable, 1);
 
     connect(clearOrderBtn, &QPushButton::clicked, this, [this]() {
         orderTable->setRowCount(0);
@@ -1068,8 +1042,8 @@ void MainWindow::setupUI() {
         orderQrHint->hide();
     });
 
-    partsColumnsLayout->addWidget(orderGroup, 1);
-    partsColumnsLayout->addWidget(tableContainer, 2);
+    bottomLayout->addWidget(rightPanel, 2);
+    partsMainLayout->addWidget(bottomRow, 3);
     tabWidget->addTab(partsTab, "Parts List");
 
     // Videos tab
@@ -1974,7 +1948,8 @@ void MainWindow::onGenerateOrder() {
                         qrImage.setPixel(x * scale + sx, y * scale + sy, qRgb(0, 0, 0));
     QRcode_free(qr);
 
-    orderQrLabel->setPixmap(QPixmap::fromImage(qrImage));
+    orderQrLabel->setPixmap(QPixmap::fromImage(qrImage).scaled(
+        orderQrLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
     orderQrHint->show();
 }
 
