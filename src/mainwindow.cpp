@@ -60,6 +60,8 @@ public:
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     }
 
+    void setCornerRadius(int r) { m_radius = r; update(); }
+
     QSize sizeHint() const override {
         return m_src.isNull() ? QLabel::sizeHint() : m_src.size();
     }
@@ -68,14 +70,36 @@ protected:
     void resizeEvent(QResizeEvent* e) override {
         QLabel::resizeEvent(e);
         if (m_src.isNull() || height() <= 0) return;
-        QPixmap scaled = m_src.scaledToHeight(height(), Qt::SmoothTransformation);
-        QLabel::setPixmap(scaled);
-        if (scaled.width() != minimumWidth())
-            setFixedWidth(scaled.width());
+        if (m_radius == 0) {
+            m_scaled = m_src.scaledToHeight(height(), Qt::SmoothTransformation);
+            QLabel::setPixmap(m_scaled);
+            if (m_scaled.width() != minimumWidth())
+                setFixedWidth(m_scaled.width());
+        } else {
+            m_scaled = m_src.scaled(size(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            update();
+        }
+    }
+
+    void paintEvent(QPaintEvent* e) override {
+        if (m_radius == 0 || m_scaled.isNull()) {
+            QLabel::paintEvent(e);
+            return;
+        }
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        QRect imgRect = m_scaled.rect();
+        imgRect.moveCenter(rect().center());
+        QPainterPath path;
+        path.addRoundedRect(imgRect, m_radius, m_radius);
+        p.setClipPath(path);
+        p.drawPixmap(imgRect, m_scaled);
     }
 
 private:
     QPixmap m_src;
+    QPixmap m_scaled;
+    int m_radius = 0;
 };
 
 MainWindow::MainWindow(SensorManager& sensors, AlarmManager& alarms,
@@ -851,22 +875,17 @@ void MainWindow::setupUI() {
     orderPartName   = new QLineEdit(hiddenFields);
     orderQuantity   = new QLineEdit(hiddenFields);
 
-    // Top row: assembly image + QR code
-    QWidget* topRow = new QWidget();
-    QHBoxLayout* topRowLayout = new QHBoxLayout(topRow);
-    topRowLayout->setSpacing(12);
-    topRowLayout->setContentsMargins(0, 0, 0, 0);
+    // Grid layout: col 0 = catalog/order (same width), col 1 = qr/assembly (same width)
+    QGridLayout* partsGrid = new QGridLayout();
+    partsGrid->setSpacing(12);
+    partsGrid->setContentsMargins(0, 0, 0, 0);
+    partsGrid->setColumnStretch(0, 1);
+    partsGrid->setColumnStretch(1, 1);
+    partsGrid->setRowStretch(0, 3);
+    partsGrid->setRowStretch(1, 2);
 
-    topRow->setFixedHeight(220);
-
-    QLabel* assemblyLabel = new QLabel("PICTURE OF ASSEMBLY HERE", this);
-    assemblyLabel->setAlignment(Qt::AlignCenter);
-    assemblyLabel->setStyleSheet(R"(
-        font-size: 28px; font-weight: bold; color: #a0a0c0;
-        border: 2px dashed #2a2a52; border-radius: 10px;
-        background: rgba(33,33,51,0.4);
-    )");
-    topRowLayout->addWidget(assemblyLabel, 3);
+    AspectPixmapLabel* assemblyLabel = new AspectPixmapLabel(QPixmap("../exploded.png"));
+    assemblyLabel->setCornerRadius(10);
 
     QWidget* qrPanel = new QWidget();
     QVBoxLayout* qrPanelLayout = new QVBoxLayout(qrPanel);
@@ -876,24 +895,22 @@ void MainWindow::setupUI() {
 
     orderQrLabel = new QLabel(this);
     orderQrLabel->setAlignment(Qt::AlignCenter);
-    orderQrLabel->setFixedSize(180, 180);
+    orderQrLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     qrPanelLayout->addWidget(orderQrLabel);
 
     orderQrHint = new QLabel(this);
     orderQrHint->setText("Scan to complete your order");
     orderQrHint->setAlignment(Qt::AlignCenter);
     orderQrHint->setStyleSheet("font-size: 14px; color: white; padding: 4px;");
+    {
+        QSizePolicy sp = orderQrHint->sizePolicy();
+        sp.setRetainSizeWhenHidden(true);
+        orderQrHint->setSizePolicy(sp);
+    }
     orderQrHint->hide();
     qrPanelLayout->addWidget(orderQrHint);
 
-    topRowLayout->addWidget(qrPanel, 1);
-    partsMainLayout->addWidget(topRow);
-
-    // Bottom row
-    QWidget* bottomRow = new QWidget();
-    QHBoxLayout* bottomLayout = new QHBoxLayout(bottomRow);
-    bottomLayout->setSpacing(12);
-    bottomLayout->setContentsMargins(0, 0, 0, 0);
+    partsGrid->addWidget(qrPanel, 1, 1);
 
     QString tableStyle = R"(
         QTableWidget {
@@ -989,7 +1006,7 @@ void MainWindow::setupUI() {
 
     QScroller::grabGesture(partsTable->viewport(), QScroller::TouchGesture);
     catalogLayout->addWidget(partsTable);
-    bottomLayout->addWidget(catalogContainer, 3);
+    partsGrid->addWidget(catalogContainer, 1, 0);
 
     // --- Right panel: Current Order + QR code ---
     QWidget* rightPanel = new QWidget();
@@ -1042,8 +1059,9 @@ void MainWindow::setupUI() {
         orderQrHint->hide();
     });
 
-    bottomLayout->addWidget(rightPanel, 2);
-    partsMainLayout->addWidget(bottomRow, 3);
+    partsGrid->addWidget(assemblyLabel, 0, 0);
+    partsGrid->addWidget(rightPanel, 0, 1);
+    partsMainLayout->addLayout(partsGrid, 1);
     tabWidget->addTab(partsTab, "Parts List");
 
     // Videos tab
@@ -1948,8 +1966,9 @@ void MainWindow::onGenerateOrder() {
                         qrImage.setPixel(x * scale + sx, y * scale + sy, qRgb(0, 0, 0));
     QRcode_free(qr);
 
+    int qrSize = qMin(orderQrLabel->width(), orderQrLabel->height());
     orderQrLabel->setPixmap(QPixmap::fromImage(qrImage).scaled(
-        orderQrLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        qrSize, qrSize, Qt::KeepAspectRatio, Qt::FastTransformation));
     orderQrHint->show();
 }
 
