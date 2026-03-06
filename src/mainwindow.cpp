@@ -880,7 +880,8 @@ void MainWindow::setupUI() {
     partsGrid->setSpacing(12);
     partsGrid->setContentsMargins(0, 0, 0, 0);
     partsGrid->setColumnStretch(0, 1);
-    partsGrid->setColumnStretch(1, 1);
+    partsGrid->setColumnStretch(1, 0);
+    partsGrid->setColumnStretch(2, 1);
     partsGrid->setRowStretch(0, 3);
     partsGrid->setRowStretch(1, 2);
 
@@ -910,7 +911,7 @@ void MainWindow::setupUI() {
     orderQrHint->hide();
     qrPanelLayout->addWidget(orderQrHint);
 
-    partsGrid->addWidget(qrPanel, 1, 1);
+    partsGrid->addWidget(qrPanel, 1, 2);
 
     QString tableStyle = R"(
         QTableWidget {
@@ -1059,8 +1060,13 @@ void MainWindow::setupUI() {
         orderQrHint->hide();
     });
 
+    QFrame* divider = new QFrame();
+    divider->setFrameShape(QFrame::VLine);
+    divider->setStyleSheet("color: #2a2a52;");
+    partsGrid->addWidget(divider, 0, 1, 2, 1);
+
     partsGrid->addWidget(assemblyLabel, 0, 0);
-    partsGrid->addWidget(rightPanel, 0, 1);
+    partsGrid->addWidget(rightPanel, 0, 2);
     partsMainLayout->addLayout(partsGrid, 1);
     tabWidget->addTab(partsTab, "Parts List");
 
