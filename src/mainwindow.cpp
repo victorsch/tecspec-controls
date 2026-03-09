@@ -879,7 +879,7 @@ void MainWindow::setupUI() {
     QGridLayout* partsGrid = new QGridLayout();
     partsGrid->setSpacing(12);
     partsGrid->setContentsMargins(0, 0, 0, 0);
-    partsGrid->setColumnStretch(0, 3);
+    partsGrid->setColumnStretch(0, 4);
     partsGrid->setColumnStretch(1, 0);
     partsGrid->setColumnStretch(2, 2);
     partsGrid->setRowStretch(0, 3);
@@ -947,15 +947,16 @@ void MainWindow::setupUI() {
     catalogLayout->addWidget(catalogLabel);
 
     partsTable = new QTableWidget(this);
-    partsTable->setColumnCount(4);
-    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Quantity", "Add to Order"});
+    partsTable->setColumnCount(5);
+    partsTable->setHorizontalHeaderLabels({"Item No", "Item Description", "Assembly", "Quantity", "Add to Order"});
     partsTable->verticalHeader()->setVisible(false);
     partsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
     partsTable->setColumnWidth(0, 180);
     partsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    partsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    partsTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
-    partsTable->setColumnWidth(3, 130);
+    partsTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+    partsTable->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    partsTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Fixed);
+    partsTable->setColumnWidth(4, 130);
     partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     partsTable->setSelectionMode(QAbstractItemView::NoSelection);
     partsTable->setAlternatingRowColors(true);
@@ -974,13 +975,17 @@ void MainWindow::setupUI() {
                 partsTable->insertRow(row);
                 auto* itemNo = new QTableWidgetItem(fields[2].trimmed());
                 itemNo->setTextAlignment(Qt::AlignCenter);
+                itemNo->setData(Qt::UserRole, fields[1].trimmed());
                 partsTable->setItem(row, 0, itemNo);
                 auto* itemDesc = new QTableWidgetItem(fields[3].trimmed());
                 itemDesc->setTextAlignment(Qt::AlignCenter);
                 partsTable->setItem(row, 1, itemDesc);
+                auto* itemAssembly = new QTableWidgetItem(fields[1].trimmed());
+                itemAssembly->setTextAlignment(Qt::AlignCenter);
+                partsTable->setItem(row, 2, itemAssembly);
                 auto* itemQty = new QTableWidgetItem(fields[4].trimmed());
                 itemQty->setTextAlignment(Qt::AlignCenter);
-                partsTable->setItem(row, 2, itemQty);
+                partsTable->setItem(row, 3, itemQty);
                 partsTable->setRowHeight(row, 44);
 
                 QPushButton* addBtn = new QPushButton("+ Add", this);
@@ -994,18 +999,129 @@ void MainWindow::setupUI() {
                     QPushButton:pressed { background: #141428; }
                 )");
                 connect(addBtn, &QPushButton::clicked, this, [this, row]() {
-                    if (auto* i = partsTable->item(row, 0)) orderPartNumber->setText(i->text());
-                    if (auto* i = partsTable->item(row, 1)) orderPartName->setText(i->text());
-                    if (auto* i = partsTable->item(row, 2)) orderQuantity->setText(i->text());
-                    onGenerateOrder();
+                    QString partNo    = partsTable->item(row, 0) ? partsTable->item(row, 0)->text() : "";
+                    QString blockDesc = partsTable->item(row, 0) ? partsTable->item(row, 0)->data(Qt::UserRole).toString() : "";
+                    QString partName  = partsTable->item(row, 1) ? partsTable->item(row, 1)->text() : "";
+                    int defaultQty   = partsTable->item(row, 3) ? partsTable->item(row, 3)->text().toInt() : 1;
+                    if (defaultQty < 1) defaultQty = 1;
+
+                    QDialog* dialog = new QDialog(this);
+                    dialog->setWindowTitle("Add to Order");
+                    dialog->setModal(true);
+                    dialog->setMinimumWidth(360);
+                    dialog->setStyleSheet("QDialog { background: #0a0a14; } QLabel { color: #e0e0e0; }");
+
+                    QVBoxLayout* dl = new QVBoxLayout(dialog);
+                    dl->setSpacing(16);
+                    dl->setContentsMargins(24, 24, 24, 24);
+
+                    auto makeInfoLabel = [dialog](const QString& key, const QString& val) {
+                        QLabel* l = new QLabel(QString("<b>%1:</b> %2").arg(key, val), dialog);
+                        l->setStyleSheet("font-size: 14px; color: #e0e0e0;");
+                        l->setWordWrap(true);
+                        return l;
+                    };
+                    dl->addWidget(makeInfoLabel("Item No", partNo));
+                    dl->addWidget(makeInfoLabel("Item Description", partName));
+                    dl->addWidget(makeInfoLabel("Subassembly", blockDesc));
+
+                    // Quantity row
+                    QWidget* qtyRow = new QWidget(dialog);
+                    QHBoxLayout* qtyLayout = new QHBoxLayout(qtyRow);
+                    qtyLayout->setContentsMargins(0, 0, 0, 0);
+                    qtyLayout->setSpacing(16);
+
+                    QString qtyBtnStyle = R"(
+                        QPushButton {
+                            background: #212133; color: white;
+                            font-size: 24px; font-weight: bold;
+                            border: 1px solid #2a2a52; border-radius: 6px;
+                            min-width: 52px; min-height: 52px;
+                        }
+                        QPushButton:pressed { background: #141428; }
+                    )";
+
+                    QPushButton* minusBtn = new QPushButton("-", dialog);
+                    minusBtn->setStyleSheet(qtyBtnStyle);
+
+                    QLabel* qtyLabel = new QLabel(QString::number(defaultQty), dialog);
+                    qtyLabel->setAlignment(Qt::AlignCenter);
+                    qtyLabel->setStyleSheet("font-size: 28px; font-weight: bold; color: white; min-width: 60px;");
+
+                    QPushButton* plusBtn = new QPushButton("+", dialog);
+                    plusBtn->setStyleSheet(qtyBtnStyle);
+
+                    qtyLayout->addStretch();
+                    qtyLayout->addWidget(minusBtn);
+                    qtyLayout->addWidget(qtyLabel);
+                    qtyLayout->addWidget(plusBtn);
+                    qtyLayout->addStretch();
+                    dl->addWidget(qtyRow);
+
+                    int* qty = new int(defaultQty);
+                    connect(plusBtn, &QPushButton::clicked, dialog, [qty, qtyLabel]() {
+                        (*qty)++;
+                        qtyLabel->setText(QString::number(*qty));
+                    });
+                    connect(minusBtn, &QPushButton::clicked, dialog, [qty, qtyLabel]() {
+                        if (*qty > 1) { (*qty)--; qtyLabel->setText(QString::number(*qty)); }
+                    });
+
+                    // Confirm / Cancel buttons
+                    QWidget* btnRow = new QWidget(dialog);
+                    QHBoxLayout* btnLayout = new QHBoxLayout(btnRow);
+                    btnLayout->setSpacing(12);
+                    btnLayout->setContentsMargins(0, 0, 0, 0);
+
+                    QPushButton* cancelBtn = new QPushButton("Cancel", dialog);
+                    cancelBtn->setStyleSheet(R"(
+                        QPushButton { background: #212133; color: #a0a0c0;
+                            font-size: 16px; font-weight: bold; padding: 12px;
+                            border-radius: 6px; border: 1px solid #2a2a52; }
+                        QPushButton:pressed { background: #141428; }
+                    )");
+
+                    QPushButton* confirmBtn = new QPushButton("Add to Order", dialog);
+                    confirmBtn->setStyleSheet(R"(
+                        QPushButton { background: #1e2044; color: #00d4ff;
+                            font-size: 16px; font-weight: bold; padding: 12px;
+                            border-radius: 6px; border: 1px solid #00d4ff; }
+                        QPushButton:pressed { background: #141428; }
+                    )");
+
+                    btnLayout->addWidget(cancelBtn, 1);
+                    btnLayout->addWidget(confirmBtn, 1);
+                    dl->addWidget(btnRow);
+
+                    connect(cancelBtn, &QPushButton::clicked, dialog, &QDialog::reject);
+                    connect(confirmBtn, &QPushButton::clicked, dialog, [this, dialog, qty, partNo, partName]() {
+                        orderPartNumber->setText(partNo);
+                        orderPartName->setText(partName);
+                        orderQuantity->setText(QString::number(*qty));
+                        onGenerateOrder();
+                        dialog->accept();
+                    });
+
+                    connect(dialog, &QDialog::finished, dialog, [dialog, qty](int) {
+                        delete qty;
+                        dialog->deleteLater();
+                    });
+
+                    dialog->exec();
                 });
-                partsTable->setCellWidget(row, 3, addBtn);
+                partsTable->setCellWidget(row, 4, addBtn);
             }
         }
         csvFile.close();
     }
 
     QScroller::grabGesture(partsTable->viewport(), QScroller::TouchGesture);
+    {
+        QScrollerProperties props = QScroller::scroller(partsTable->viewport())->scrollerProperties();
+        props.setScrollMetric(QScrollerProperties::DecelerationFactor, 0.05);
+        props.setScrollMetric(QScrollerProperties::MaximumVelocity, 0.1);
+        QScroller::scroller(partsTable->viewport())->setScrollerProperties(props);
+    }
     catalogLayout->addWidget(partsTable);
     partsGrid->addWidget(catalogContainer, 1, 0);
 
@@ -1194,6 +1310,7 @@ void MainWindow::setupUI() {
     videoPauseButton->setStyleSheet(R"(
         QPushButton {
             font-size: 22px;
+            font-family: 'Noto Sans Symbols 2', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif;
             color: white;
             background: transparent;
             border: none;
