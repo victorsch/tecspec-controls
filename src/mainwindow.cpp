@@ -879,9 +879,9 @@ void MainWindow::setupUI() {
     QGridLayout* partsGrid = new QGridLayout();
     partsGrid->setSpacing(12);
     partsGrid->setContentsMargins(0, 0, 0, 0);
-    partsGrid->setColumnStretch(0, 1);
+    partsGrid->setColumnStretch(0, 3);
     partsGrid->setColumnStretch(1, 0);
-    partsGrid->setColumnStretch(2, 1);
+    partsGrid->setColumnStretch(2, 2);
     partsGrid->setRowStretch(0, 3);
     partsGrid->setRowStretch(1, 2);
 
@@ -1291,7 +1291,7 @@ void MainWindow::setupUI() {
         + contactQueryParams();
     QRcode* supportQr = QRcode_encodeString(supportUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (supportQr) {
-        int scale = 10;
+        int scale = 6;
         int qrSize = supportQr->width * scale;
         QImage qrImage(qrSize, qrSize, QImage::Format_RGB32);
         qrImage.fill(Qt::white);
@@ -1520,7 +1520,7 @@ void MainWindow::setupUI() {
     QString aboutUrl = "https://srs-support-order.replit.app?" + contactQueryParams().mid(1); // strip leading &
     QRcode* aboutQr = QRcode_encodeString(aboutUrl.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
     if (aboutQr) {
-        int scale = 10;
+        int scale = 6;
         int qrSize = aboutQr->width * scale;
         QImage qrImage(qrSize, qrSize, QImage::Format_RGB32);
         qrImage.fill(Qt::white);
