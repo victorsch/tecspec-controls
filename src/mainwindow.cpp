@@ -1008,16 +1008,32 @@ void MainWindow::setupUI() {
                     QDialog* dialog = new QDialog(this);
                     dialog->setWindowTitle("Add to Order");
                     dialog->setModal(true);
-                    dialog->setMinimumWidth(360);
-                    dialog->setStyleSheet("QDialog { background: #0a0a14; } QLabel { color: #e0e0e0; }");
+                    dialog->setMinimumWidth(400);
+                    dialog->setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+                    dialog->setAttribute(Qt::WA_StyledBackground, true);
+                    dialog->setStyleSheet("QDialog { background: #0a0a14; }");
 
-                    QVBoxLayout* dl = new QVBoxLayout(dialog);
+                    QVBoxLayout* dialogWrap = new QVBoxLayout(dialog);
+                    dialogWrap->setContentsMargins(20, 20, 20, 20);
+
+                    QFrame* card = new QFrame(dialog);
+                    card->setStyleSheet(R"(
+                        QFrame {
+                            background: #1c1c2e;
+                            border-radius: 14px;
+                            border: 1px solid #3a3a5c;
+                        }
+                        QLabel { background: transparent; color: #e0e0e0; }
+                    )");
+                    dialogWrap->addWidget(card);
+
+                    QVBoxLayout* dl = new QVBoxLayout(card);
                     dl->setSpacing(16);
-                    dl->setContentsMargins(24, 24, 24, 24);
+                    dl->setContentsMargins(28, 24, 28, 24);
 
-                    auto makeInfoLabel = [dialog](const QString& key, const QString& val) {
-                        QLabel* l = new QLabel(QString("<b>%1:</b> %2").arg(key, val), dialog);
-                        l->setStyleSheet("font-size: 14px; color: #e0e0e0;");
+                    auto makeInfoLabel = [card](const QString& key, const QString& val) {
+                        QLabel* l = new QLabel(QString("<b>%1:</b> %2").arg(key, val), card);
+                        l->setStyleSheet("font-size: 14px; color: #e0e0e0; background: transparent;");
                         l->setWordWrap(true);
                         return l;
                     };
