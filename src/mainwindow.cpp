@@ -1219,12 +1219,12 @@ void MainWindow::setupUI() {
     const QString videoDir = QCoreApplication::applicationDirPath();
     struct VideoEntry { QString title; QString file; };
     const QList<VideoEntry> videos = {
-        { "How it Works",          "" },
-        { "Exploded Parts View",   videoDir + "/exploded.mp4" },
+        { "How it Works",           videoDir + "/how.mp4" },
+        { "Exploded Parts View",    videoDir + "/exploded.mp4" },
         { "Opening Heat Exchanger", videoDir + "/opening.mp4" },
-        { "Cleaning",              "" },
-        { "Changing Gaskets",      "" },
-        { "Closing Heat Exchanger","" },
+        { "Cleaning",               videoDir + "/cleaning.mp4" },
+        { "Changing Gaskets",       videoDir + "/changing.mp4" },
+        { "Closing Heat Exchanger", videoDir + "/closing.mp4" },
     };
     for (const auto& v : videos) {
         QListWidgetItem* item = new QListWidgetItem(v.title, videoList);
