@@ -85,10 +85,15 @@ private:
     std::map<std::string, QCheckBox*> sensorCheckBoxes;
     std::map<std::string, QLineSeries*> chartSeriesMap;
 
-    // PDF viewer components
+    // PDF viewer components (IOM tab)
     QGraphicsView* pdfView;
     QGraphicsScene* pdfScene;
     std::unique_ptr<Poppler::Document> pdfDocument;
+
+    // PDF viewer components (Info tab)
+    QGraphicsView* infoPdfView;
+    QGraphicsScene* infoPdfScene;
+    std::unique_ptr<Poppler::Document> infoPdfDocument;
     bool event(QEvent* event) override;
     bool eventFilter(QObject* obj, QEvent* event) override;
     void handlePinchGesture(QPinchGesture* gesture);

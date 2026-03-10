@@ -378,7 +378,7 @@ void MainWindow::setupUI() {
     // Title
     QLabel* title = new QLabel("Real-time Monitoring", this);
     title->setAlignment(Qt::AlignCenter);
-    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: #a0a0c0;");
+    title->setStyleSheet("font-size: 24px; font-weight: bold; padding: 10px; color: white;");
     monitoringLayout->addWidget(title);
 
     // Status bar
@@ -387,11 +387,11 @@ void MainWindow::setupUI() {
     statusLayout->addStretch();
 
     alarmBellLabel = new QLabel(this);
-    alarmBellLabel->setPixmap(bellPixmap(QColor("#a0a0c0"), 30));
+    alarmBellLabel->setPixmap(bellPixmap(Qt::white, 30));
     statusLayout->addWidget(alarmBellLabel);
 
     alarmCountLabel = new QLabel("Alarms: 0", this);
-    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #a0a0c0;");
+    alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: white;");
     statusLayout->addWidget(alarmCountLabel);
 
     diagnoseButton = new QPushButton("Diagnose", this);
@@ -478,11 +478,12 @@ void MainWindow::setupUI() {
 
     const auto& sensorConfigs = Config::instance().getSensors();
     for (const auto& sensor : sensorConfigs) {
-        bool isCold = sensor.id.find("hot") == std::string::npos;
-        QString fontSize = "20px";
-        QString sideColor = isCold ? "#00d4ff" : "#ff6b6b";
-        QLabel* label = new QLabel(QString::fromStdString(sensor.name + ": --- " + sensor.unit), this);
-        label->setStyleSheet(QString("font-size: %1; padding: 5px; color: %2;").arg(fontSize, sideColor));
+        QString sideColor = (sensor.id.find("hot") != std::string::npos) ? "#ff6b6b" : "#00d4ff";
+        QString initHtml = QString("<span style='color:white'>%1: </span>"
+                                   "<span style='color:%2'>--- %3</span>")
+            .arg(QString::fromStdString(sensor.name), sideColor, QString::fromStdString(sensor.unit));
+        QLabel* label = new QLabel(initHtml, this);
+        label->setStyleSheet("font-size: 20px; padding: 5px;");
         label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         sensorLabels[sensor.id] = label;
 
@@ -490,8 +491,8 @@ void MainWindow::setupUI() {
     }
 
     // Delta P label for hot side
-    QLabel* deltaPHotLabel = new QLabel("\u0394P: --- psi", this);
-    deltaPHotLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #ff6b6b;");
+    QLabel* deltaPHotLabel = new QLabel("<span style='color:white'>\u0394P: </span><span style='color:#ff6b6b'>--- psi</span>", this);
+    deltaPHotLabel->setStyleSheet("font-size: 20px; padding: 5px;");
     deltaPHotLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_hot"] = deltaPHotLabel;
 
@@ -506,8 +507,8 @@ void MainWindow::setupUI() {
     if (sensorLabels.count("pressure_hot_outlet"))  hotValLayout->addWidget(sensorLabels["pressure_hot_outlet"]);
 
     // Delta P label for cold side
-    QLabel* deltaPColdLabel = new QLabel("\u0394P: --- psi", this);
-    deltaPColdLabel->setStyleSheet("font-size: 20px; padding: 5px; color: #00d4ff;");
+    QLabel* deltaPColdLabel = new QLabel("<span style='color:white'>\u0394P: </span><span style='color:#00d4ff'>--- psi</span>", this);
+    deltaPColdLabel->setStyleSheet("font-size: 20px; padding: 5px;");
     deltaPColdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_cold"] = deltaPColdLabel;
 
@@ -860,6 +861,55 @@ void MainWindow::setupUI() {
 
     tabWidget->addTab(iomTab, "IOM");
 
+    // Info tab (PDF viewer for plate/product info)
+    QWidget* infoTab = new QWidget();
+    infoTab->setStyleSheet("background: transparent;");
+    QVBoxLayout* infoLayout = new QVBoxLayout(infoTab);
+    infoLayout->setContentsMargins(0, 0, 0, 0);
+
+    infoPdfScene = new QGraphicsScene(this);
+    infoPdfView = new QGraphicsView(infoPdfScene, this);
+    infoPdfView->setRenderHint(QPainter::Antialiasing);
+    infoPdfView->setRenderHint(QPainter::SmoothPixmapTransform);
+    infoPdfView->setStyleSheet("QGraphicsView { border: none; background: #1e1e40; }");
+    infoPdfView->grabGesture(Qt::PinchGesture);
+    infoPdfView->viewport()->grabGesture(Qt::PinchGesture);
+    infoPdfView->viewport()->setAttribute(Qt::WA_AcceptTouchEvents);
+    infoPdfView->setAttribute(Qt::WA_AcceptTouchEvents);
+    infoPdfView->installEventFilter(this);
+    infoPdfView->viewport()->installEventFilter(this);
+    QScroller::grabGesture(infoPdfView->viewport(), QScroller::TouchGesture);
+
+    infoPdfDocument = Poppler::Document::load(QString("../plate.pdf"));
+    if (infoPdfDocument && !infoPdfDocument->isLocked()) {
+        infoPdfDocument->setRenderHint(Poppler::Document::TextAntialiasing);
+        infoPdfDocument->setRenderHint(Poppler::Document::Antialiasing);
+
+        int availableWidth = displayConfig.width - 40;
+        double yOffset = 0;
+
+        for (int i = 0; i < infoPdfDocument->numPages(); i++) {
+            std::unique_ptr<Poppler::Page> page = infoPdfDocument->page(i);
+            if (page) {
+                QSizeF pageSize = page->pageSizeF();
+                double dpi = (availableWidth / pageSize.width()) * 72.0;
+
+                QImage image = page->renderToImage(dpi, dpi);
+                QGraphicsPixmapItem* item = infoPdfScene->addPixmap(QPixmap::fromImage(image));
+                item->setPos(0, yOffset);
+                yOffset += image.height() + 10;
+            }
+        }
+    } else {
+        QGraphicsTextItem* errorText = infoPdfScene->addText("Could not load Info PDF.\nPlace plate.pdf in the application directory.");
+        errorText->setDefaultTextColor(QColor("#ff6b6b"));
+        errorText->setFont(QFont("sans-serif", 16));
+    }
+
+    infoLayout->addWidget(infoPdfView);
+
+    tabWidget->addTab(infoTab, "Plate Info");
+
     // Parts List tab
     QWidget* partsTab = new QWidget();
     partsTab->setStyleSheet("background: transparent;");
@@ -960,7 +1010,26 @@ void MainWindow::setupUI() {
     partsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     partsTable->setSelectionMode(QAbstractItemView::NoSelection);
     partsTable->setAlternatingRowColors(true);
-    partsTable->setStyleSheet(tableStyle);
+    partsTable->setStyleSheet(tableStyle + R"(
+        QScrollBar:vertical {
+            background: transparent;
+            width: 8px;
+            margin: 0;
+        }
+        QScrollBar::handle:vertical {
+            background: white;
+            border-radius: 4px;
+            min-height: 30px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: white;
+        }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            background: transparent;
+            height: 0px;
+        }
+    )");
 
     QFile csvFile("../parts_list.csv");
     if (csvFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -1771,24 +1840,29 @@ void MainWindow::updateDisplay() {
 
             bool inAlarm = alarmManager.isAlarmActive(sensor.id, "HIGH") ||
                            alarmManager.isAlarmActive(sensor.id, "LOW");
-            bool isCold = sensor.id.find("hot") == std::string::npos;
-            QString fs = "20px";
+            QString sideColor = (sensor.id.find("hot") != std::string::npos) ? "#ff6b6b" : "#00d4ff";
+            QString valueColor = inAlarm ? "#facc15" : sideColor;
+            QString weight = inAlarm ? "font-weight:bold;" : "";
+            QString valueStr = QString("%1 %2").arg(value, 0, 'f', 1).arg(QString::fromStdString(sensor.unit));
 
             QLabel* label = sensorLabels[sensor.id];
-            label->setText(text);
-            if (inAlarm)
-                label->setStyleSheet(QString("font-size: %1; padding: 5px; color: #facc15; font-weight: bold;").arg(fs));
+            label->setStyleSheet("font-size: 20px; padding: 5px;");
+            label->setText(QString("<span style='color:white'>%1: </span>"
+                                   "<span style='color:%2;%3'>%4</span>")
+                           .arg(name, valueColor, weight, valueStr));
         }
     }
 
     // Update ΔP labels
     if (sensorLabels.count("pressure_diff_hot")) {
         float dp = values.count("pressure_diff_hot") ? values.at("pressure_diff_hot") : 0.0f;
-        sensorLabels["pressure_diff_hot"]->setText(QString("\u0394P: %1 psi").arg(dp, 0, 'f', 2));
+        sensorLabels["pressure_diff_hot"]->setText(
+            QString("<span style='color:white'>\u0394P: </span><span style='color:#ff6b6b'>%1 psi</span>").arg(dp, 0, 'f', 2));
     }
     if (sensorLabels.count("pressure_diff_cold")) {
         float dp = values.count("pressure_diff_cold") ? values.at("pressure_diff_cold") : 0.0f;
-        sensorLabels["pressure_diff_cold"]->setText(QString("\u0394P: %1 psi").arg(dp, 0, 'f', 2));
+        sensorLabels["pressure_diff_cold"]->setText(
+            QString("<span style='color:white'>\u0394P: </span><span style='color:#00d4ff'>%1 psi</span>").arg(dp, 0, 'f', 2));
     }
 
     // Update alarm count
@@ -1799,8 +1873,8 @@ void MainWindow::updateDisplay() {
         alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #b91c1c;");
         diagnoseButton->show();
     } else {
-        alarmBellLabel->setPixmap(bellPixmap(QColor("#a0a0c0"), 30));
-        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: #a0a0c0;");
+        alarmBellLabel->setPixmap(bellPixmap(Qt::white, 30));
+        alarmCountLabel->setStyleSheet("font-size: 26px; font-weight: bold; color: white;");
         diagnoseButton->hide();
     }
 
@@ -2011,11 +2085,20 @@ bool MainWindow::event(QEvent* event) {
 }
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
-    if ((obj == pdfView || obj == pdfView->viewport()) && event->type() == QEvent::Gesture) {
-        QGestureEvent* gestureEvent = static_cast<QGestureEvent*>(event);
-        if (QPinchGesture* pinch = static_cast<QPinchGesture*>(gestureEvent->gesture(Qt::PinchGesture))) {
-            handlePinchGesture(pinch);
-            return true;
+    if (event->type() == QEvent::Gesture) {
+        if (obj == pdfView || obj == pdfView->viewport()) {
+            QGestureEvent* gestureEvent = static_cast<QGestureEvent*>(event);
+            if (QPinchGesture* pinch = static_cast<QPinchGesture*>(gestureEvent->gesture(Qt::PinchGesture))) {
+                handlePinchGesture(pinch);
+                return true;
+            }
+        }
+        if (obj == infoPdfView || obj == infoPdfView->viewport()) {
+            QGestureEvent* gestureEvent = static_cast<QGestureEvent*>(event);
+            if (QPinchGesture* pinch = static_cast<QPinchGesture*>(gestureEvent->gesture(Qt::PinchGesture))) {
+                infoPdfView->scale(pinch->scaleFactor(), pinch->scaleFactor());
+                return true;
+            }
         }
     }
     if (obj == videoClickArea && event->type() == QEvent::MouseButtonPress) {
