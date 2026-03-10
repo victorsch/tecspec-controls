@@ -496,12 +496,19 @@ void MainWindow::setupUI() {
     deltaPHotLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_hot"] = deltaPHotLabel;
 
+    // Head loss label for hot side
+    QLabel* headLossHotLabel = new QLabel("<span style='color:white'>Head Loss: </span><span style='color:#ff6b6b'>--- ft</span>", this);
+    headLossHotLabel->setStyleSheet("font-size: 20px; padding: 5px;");
+    headLossHotLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    sensorLabels["head_loss_hot"] = headLossHotLabel;
+
     // Hot side: inlet at top, flow + ΔP in middle, outlet at bottom
     if (sensorLabels.count("inlet_temp_hot"))       hotValLayout->addWidget(sensorLabels["inlet_temp_hot"]);
     if (sensorLabels.count("pressure_hot_inlet"))   hotValLayout->addWidget(sensorLabels["pressure_hot_inlet"]);
     hotValLayout->addStretch(1);
     if (sensorLabels.count("flow_rate_hot"))        hotValLayout->addWidget(sensorLabels["flow_rate_hot"]);
     if (sensorLabels.count("pressure_diff_hot"))    hotValLayout->addWidget(sensorLabels["pressure_diff_hot"]);
+    if (sensorLabels.count("head_loss_hot"))        hotValLayout->addWidget(sensorLabels["head_loss_hot"]);
     hotValLayout->addStretch(1);
     if (sensorLabels.count("outlet_temp_hot"))      hotValLayout->addWidget(sensorLabels["outlet_temp_hot"]);
     if (sensorLabels.count("pressure_hot_outlet"))  hotValLayout->addWidget(sensorLabels["pressure_hot_outlet"]);
@@ -512,12 +519,19 @@ void MainWindow::setupUI() {
     deltaPColdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     sensorLabels["pressure_diff_cold"] = deltaPColdLabel;
 
+    // Head loss label for cold side
+    QLabel* headLossColdLabel = new QLabel("<span style='color:white'>Head Loss: </span><span style='color:#00d4ff'>--- ft</span>", this);
+    headLossColdLabel->setStyleSheet("font-size: 20px; padding: 5px;");
+    headLossColdLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    sensorLabels["head_loss_cold"] = headLossColdLabel;
+
     // Cold side: outlet at top aligned with top port, flow in middle, inlet at bottom aligned with bottom port
-    if (sensorLabels.count("outlet_temp_cold"))    coldValLayout->addWidget(sensorLabels["outlet_temp_cold"]);
+    if (sensorLabels.count("outlet_temp_cold"))     coldValLayout->addWidget(sensorLabels["outlet_temp_cold"]);
     if (sensorLabels.count("pressure_cold_outlet")) coldValLayout->addWidget(sensorLabels["pressure_cold_outlet"]);
     coldValLayout->addStretch(1);
     if (sensorLabels.count("flow_rate_cold"))       coldValLayout->addWidget(sensorLabels["flow_rate_cold"]);
     if (sensorLabels.count("pressure_diff_cold"))   coldValLayout->addWidget(sensorLabels["pressure_diff_cold"]);
+    if (sensorLabels.count("head_loss_cold"))       coldValLayout->addWidget(sensorLabels["head_loss_cold"]);
     coldValLayout->addStretch(1);
     if (sensorLabels.count("inlet_temp_cold"))      coldValLayout->addWidget(sensorLabels["inlet_temp_cold"]);
     if (sensorLabels.count("pressure_cold_inlet"))  coldValLayout->addWidget(sensorLabels["pressure_cold_inlet"]);
@@ -1473,7 +1487,7 @@ void MainWindow::setupUI() {
     supportLayout->setAlignment(Qt::AlignCenter);
     supportLayout->setSpacing(20);
 
-    QLabel* supportTitle = new QLabel("Need help? Scan the QR code below to visit our support page.", this);
+    QLabel* supportTitle = new QLabel("Need help? Request service from SRS Enterprises Inc. by scanning the QR code below.", this);
     supportTitle->setAlignment(Qt::AlignCenter);
     supportTitle->setStyleSheet("font-size: 20px; color: white;");
     supportTitle->setWordWrap(true);
@@ -1863,6 +1877,16 @@ void MainWindow::updateDisplay() {
         float dp = values.count("pressure_diff_cold") ? values.at("pressure_diff_cold") : 0.0f;
         sensorLabels["pressure_diff_cold"]->setText(
             QString("<span style='color:white'>\u0394P: </span><span style='color:#00d4ff'>%1 psi</span>").arg(dp, 0, 'f', 2));
+    }
+    if (sensorLabels.count("head_loss_hot")) {
+        float hl = values.count("head_loss_hot") ? values.at("head_loss_hot") : 0.0f;
+        sensorLabels["head_loss_hot"]->setText(
+            QString("<span style='color:white'>Head Loss: </span><span style='color:#ff6b6b'>%1 ft</span>").arg(hl, 0, 'f', 2));
+    }
+    if (sensorLabels.count("head_loss_cold")) {
+        float hl = values.count("head_loss_cold") ? values.at("head_loss_cold") : 0.0f;
+        sensorLabels["head_loss_cold"]->setText(
+            QString("<span style='color:white'>Head Loss: </span><span style='color:#00d4ff'>%1 ft</span>").arg(hl, 0, 'f', 2));
     }
 
     // Update alarm count

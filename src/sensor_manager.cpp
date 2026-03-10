@@ -17,10 +17,10 @@ void SensorManager::initializeBaseValues() {
     baseValues["outlet_temp_cold"] = 95.0f;     // °F
     baseValues["flow_rate_hot"] = 200.0f;       // GPM
     baseValues["flow_rate_cold"] = 200.0f;      // GPM
-    baseValues["pressure_hot_inlet"] = 58.0f;    // psi
-    baseValues["pressure_hot_outlet"] = 54.0f;  // psi
-    baseValues["pressure_cold_inlet"] = 50.8f;  // psi
-    baseValues["pressure_cold_outlet"] = 47.0f; // psi
+    baseValues["pressure_hot_inlet"] = 52.0f;   // psi
+    baseValues["pressure_hot_outlet"] = 45.0f;  // psi
+    baseValues["pressure_cold_inlet"] = 50.0f;  // psi
+    baseValues["pressure_cold_outlet"] = 43.0f; // psi
 
     // Initialize current values
     for (const auto& [id, base] : baseValues) {
@@ -70,19 +70,33 @@ void SensorManager::updateCalculatedValues() {
     hist.push_back(btus);
     if (hist.size() > MAX_HISTORY) hist.pop_front();
 
-    // Hot side pressure differential
-    float hotDiff = getValue("pressure_hot_inlet") - getValue("pressure_hot_outlet");
+    // Hot side pressure differential (absolute value)
+    float hotDiff = std::abs(getValue("pressure_hot_inlet") - getValue("pressure_hot_outlet"));
     values["pressure_diff_hot"] = hotDiff;
     auto& histHD = history["pressure_diff_hot"];
     histHD.push_back(hotDiff);
     if (histHD.size() > MAX_HISTORY) histHD.pop_front();
 
-    // Cold side pressure differential
-    float coldDiff = getValue("pressure_cold_inlet") - getValue("pressure_cold_outlet");
+    // Cold side pressure differential (absolute value)
+    float coldDiff = std::abs(getValue("pressure_cold_inlet") - getValue("pressure_cold_outlet"));
     values["pressure_diff_cold"] = coldDiff;
     auto& histCD = history["pressure_diff_cold"];
     histCD.push_back(coldDiff);
     if (histCD.size() > MAX_HISTORY) histCD.pop_front();
+
+    // Hot side: pressure diff to feet of head (1 psi = 2.307 ft H2O)
+    float hotHeadLoss = std::abs(hotDiff) * 2.307f;
+    values["head_loss_hot"] = hotHeadLoss;
+    auto& histHH = history["head_loss_hot"];
+    histHH.push_back(hotHeadLoss);
+    if (histHH.size() > MAX_HISTORY) histHH.pop_front();
+
+    // Cold side: pressure diff to feet of head
+    float coldHeadLoss = std::abs(coldDiff) * 2.307f;
+    values["head_loss_cold"] = coldHeadLoss;
+    auto& histCH = history["head_loss_cold"];
+    histCH.push_back(coldHeadLoss);
+    if (histCH.size() > MAX_HISTORY) histCH.pop_front();
 }
 
 float SensorManager::getValue(const std::string& sensorId) const {

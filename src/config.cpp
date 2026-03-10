@@ -42,10 +42,10 @@ void Config::initDefaults() {
         {"outlet_temp_cold", "Cold Outlet Temperature", "°F", 32, 122, 113, 41},
         {"flow_rate_hot", "Hot Side Flow Rate", "GPM", 0, 300.0f, 210.0f, 150.0f},
         {"flow_rate_cold", "Cold Side Flow Rate", "GPM", 0, 300.0f, 210.0f, 150.0f},
-        {"pressure_hot_inlet", "Hot Inlet Pressure", "psi", 0, 145, 116, 7.25f},
-        {"pressure_hot_outlet", "Hot Outlet Pressure", "psi", 0, 145, 116, 7.25f},
-        {"pressure_cold_inlet", "Cold Inlet Pressure", "psi", 0, 145, 116, 7.25f},
-        {"pressure_cold_outlet", "Cold Outlet Pressure", "psi", 0, 145, 116, 7.25f}
+        {"pressure_hot_inlet", "Hot Inlet Pressure", "psi", 0, 150, 80, 30.0f},
+        {"pressure_hot_outlet", "Hot Outlet Pressure", "psi", 0, 150, 80, 30.0f},
+        {"pressure_cold_inlet", "Cold Inlet Pressure", "psi", 0, 150, 80, 30.0f},
+        {"pressure_cold_outlet", "Cold Outlet Pressure", "psi", 0, 150, 80, 30.0f}
     };
 }
 
