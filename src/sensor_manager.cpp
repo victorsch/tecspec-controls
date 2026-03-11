@@ -5,7 +5,7 @@
 
 SensorManager::SensorManager()
     : rng(std::chrono::steady_clock::now().time_since_epoch().count())
-    , noise(0.0f, 0.5f) {
+    , noise(0.0f, 0.05f) {
     initializeBaseValues();
 }
 
@@ -39,7 +39,7 @@ void SensorManager::update() {
         float base = baseValues[sensor.id];
 
         // Add slow drift (sine wave) and random noise
-        float drift = std::sin(time * 0.1f + std::hash<std::string>{}(sensor.id)) * 2.0f;
+        float drift = std::sin(time * 0.005f + std::hash<std::string>{}(sensor.id)) * 0.2f;
         float noiseVal = noise(rng);
 
         float newValue = base + drift + noiseVal;
