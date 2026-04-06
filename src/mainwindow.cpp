@@ -155,6 +155,17 @@ static QPixmap bellPixmap(const QColor& color, int size) {
     return px;
 }
 
+static QIcon svgTabIcon(const char* svg, const QColor& color, int size = 16) {
+    QSvgRenderer renderer{QByteArray(svg)};
+    QPixmap px(size, size);
+    px.fill(Qt::transparent);
+    QPainter painter(&px);
+    renderer.render(&painter);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.fillRect(px.rect(), color);
+    return QIcon(px);
+}
+
 // Central widget that paints the gradient+grain backdrop for all transparent children
 namespace {
 class BgWidget : public QWidget {
@@ -213,6 +224,7 @@ void MainWindow::setupUI() {
 
     // Tabs
     tabWidget = new QTabWidget();
+    tabWidget->setIconSize(QSize(16, 16));
 
     // Modern HMI styling
     tabWidget->setStyleSheet(R"(
@@ -227,11 +239,11 @@ void MainWindow::setupUI() {
         QTabBar::tab {
             background: #212133;
             color: #a0a0c0;
-            padding: 18px 36px;
+            padding: 8px 14px;
             margin-right: 2px;
             border-top-left-radius: 6px;
             border-top-right-radius: 6px;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
         }
         QTabBar::tab:selected {
@@ -545,7 +557,12 @@ void MainWindow::setupUI() {
     monitoringLayout->addLayout(columnsLayout, 1);
     monitoringLayout->addStretch();
 
-    tabWidget->addTab(monitoringTab, "Monitoring");
+    // monitor outline
+    static const char* svgMonitor =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h7v2H9v2h6v-2h-2v-2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 13H4V5h16v11z'/>"
+        "</svg>";
+    tabWidget->addTab(monitoringTab, svgTabIcon(svgMonitor, QColor("#a0a0c0")), "Monitoring");
 
     // Graphs tab
     QWidget* graphsTab = new QWidget();
@@ -824,7 +841,12 @@ void MainWindow::setupUI() {
         sensorCheckBoxes[sensor.id]->setChecked(true);
     }
 
-    tabWidget->addTab(graphsTab, "Graphs");
+    // bar chart
+    static const char* svgGraphs =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z'/>"
+        "</svg>";
+    tabWidget->addTab(graphsTab, svgTabIcon(svgGraphs, QColor("#a0a0c0")), "Graphs");
 
     // IOM tab (PDF viewer for installation/operation manual)
     QWidget* iomTab = new QWidget();
@@ -873,7 +895,12 @@ void MainWindow::setupUI() {
 
     iomLayout->addWidget(pdfView);
 
-    tabWidget->addTab(iomTab, "IOM");
+    // document / folded corner
+    static const char* svgDocument =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z'/>"
+        "</svg>";
+    tabWidget->addTab(iomTab, svgTabIcon(svgDocument, QColor("#a0a0c0")), "IOM");
 
     // Info tab (PDF viewer for plate/product info)
     QWidget* infoTab = new QWidget();
@@ -922,7 +949,12 @@ void MainWindow::setupUI() {
 
     infoLayout->addWidget(infoPdfView);
 
-    tabWidget->addTab(infoTab, "Plate Info");
+    // info circle
+    static const char* svgInfo =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/>"
+        "</svg>";
+    tabWidget->addTab(infoTab, svgTabIcon(svgInfo, QColor("#a0a0c0")), "Plate Info");
 
     // Parts List tab
     QWidget* partsTab = new QWidget();
@@ -1283,7 +1315,12 @@ void MainWindow::setupUI() {
     partsGrid->addWidget(assemblyLabel, 0, 0);
     partsGrid->addWidget(rightPanel, 0, 2);
     partsMainLayout->addLayout(partsGrid, 1);
-    tabWidget->addTab(partsTab, "Parts List");
+    // bullet list
+    static const char* svgList =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z'/>"
+        "</svg>";
+    tabWidget->addTab(partsTab, svgTabIcon(svgList, QColor("#a0a0c0")), "Parts List");
 
     // Videos tab
     QWidget* videosTab = new QWidget();
@@ -1478,7 +1515,12 @@ void MainWindow::setupUI() {
 
     connect(videoList, &QListWidget::itemClicked, this, &MainWindow::onVideoSelected);
 
-    tabWidget->addTab(videosTab, "Videos");
+    // play triangle
+    static const char* svgPlay =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M8 5v14l11-7z'/>"
+        "</svg>";
+    tabWidget->addTab(videosTab, svgTabIcon(svgPlay, QColor("#a0a0c0")), "Videos");
 
     // Support tab
     QWidget* supportTab = new QWidget();
@@ -1530,7 +1572,12 @@ void MainWindow::setupUI() {
         supportLayout->addWidget(supportQrLabel);
     }
 
-    tabWidget->addTab(supportTab, "Support");
+    // question mark circle
+    static const char* svgSupport =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z'/>"
+        "</svg>";
+    tabWidget->addTab(supportTab, svgTabIcon(svgSupport, QColor("#a0a0c0")), "Support");
 
     // === Left Column: Alarm Thresholds ===
     QGroupBox* thresholdGroup = new QGroupBox("Alarm Thresholds", this);
@@ -1768,7 +1815,12 @@ void MainWindow::setupUI() {
     aboutLayout->addStretch();
     settingsColumnsLayout->addWidget(aboutGroup, 1);
 
-    tabWidget->addTab(settingsTab, "Settings");
+    // gear / cog
+    static const char* svgGear =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/>"
+        "</svg>";
+    tabWidget->addTab(settingsTab, svgTabIcon(svgGear, QColor("#a0a0c0")), "Settings");
 
     // Dev tab (conditional)
     if (displayConfig.devMode) {
@@ -1806,7 +1858,12 @@ void MainWindow::setupUI() {
         devLayout->addWidget(resetBtn);
 
         devLayout->addStretch();
-        tabWidget->addTab(devTab, "Dev");
+        // wrench
+        static const char* svgWrench =
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+            "<path d='M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z'/>"
+            "</svg>";
+        tabWidget->addTab(devTab, svgTabIcon(svgWrench, QColor("#a0a0c0")), "Dev");
     }
 
     // Add logo to top-right corner of tab bar
@@ -2186,15 +2243,18 @@ void MainWindow::onGenerateOrder() {
     orderQuantity->clear();
 
     // Build URL encoding all items in the order
-    QStringList parts, qtys;
+    QStringList parts, names, qtys;
     for (int i = 0; i < orderTable->rowCount(); i++) {
         parts << orderTable->item(i, 0)->text();
+        names << orderTable->item(i, 1)->text();
         qtys  << orderTable->item(i, 2)->text();
     }
     QString url = "https://srs-support-order.replit.app/order?parts="
                 + QString(QUrl::toPercentEncoding(parts.join(",")))
                 + "&qty="
                 + QString(QUrl::toPercentEncoding(qtys.join(",")))
+                + "&names="
+                + QString(QUrl::toPercentEncoding(names.join(",")))
                 + contactQueryParams();
 
     QRcode* qr = QRcode_encodeString(url.toUtf8().constData(), 0, QR_ECLEVEL_M, QR_MODE_8, 1);
